@@ -32,8 +32,42 @@ st.title("Spanish Verb Lab")
 
 # ---------- Sidebar: search + preview card ----------
 with st.sidebar:
+
     st.header("Verbs")
-    q = st.text_input("Search (Spanish or English)", value="", placeholder="hablar / to speak / speak")
+
+    if "search_query" not in st.session_state:
+        st.session_state["search_query"] = ""
+
+    if "search_input" not in st.session_state:
+        st.session_state["search_input"] = ""
+
+    search_cols = st.columns([0.72, 0.28])
+
+    with search_cols[0]:
+        search_text = st.text_input(
+            "Search (Spanish or English)",
+            value=st.session_state["search_input"],
+            placeholder="hablar / to speak / speak",
+            label_visibility="collapsed",
+        )
+
+    with search_cols[1]:
+        if st.button("Search", use_container_width=True):
+            st.session_state["search_query"] = search_text.strip()
+            st.session_state["search_input"] = ""   # clear box
+            st.rerun()
+
+    # keep input synced
+    st.session_state["search_input"] = search_text
+
+    if st.button("Clear search", use_container_width=True):
+        st.session_state["search_query"] = ""
+        st.rerun()
+
+
+
+
+
 
     preview_inf = st.session_state.get("preview")
     selected_inf = st.session_state.get("selected")
@@ -49,6 +83,10 @@ with st.sidebar:
             st.markdown(build_verb_card_html(v, rating=None, freq_rank=rank), unsafe_allow_html=True)
     else:
         st.caption("Click a verb tile to preview here.")
+
+
+
+
 
 
     sort_mode = st.selectbox(
@@ -77,6 +115,8 @@ def _rank(inf: str) -> int:
 
 
 def build_list() -> list[str]:
+    q = st.session_state.get("search_query", "")
+
     if q.strip():
         results = search_verbs(verbs, q, limit=5000)
         base = [r["infinitive"] for r in results if r.get("infinitive")]
@@ -86,13 +126,14 @@ def build_list() -> list[str]:
     # de-duplicate while preserving order
     base = list(dict.fromkeys(base))
 
-    # 3) Alphabetical (no ranking)
+    # alphabetical (no ranking)
     if sort_mode.startswith("3)"):
         return sorted(base, key=lambda x: x.lower())
 
-    # 1) and 2) Ranking-based
+    # ranking-based (mode 1 and 2)
     base.sort(key=lambda inf: (_rank(inf), inf))
     return base
+
 
 
 base_list = build_list()
