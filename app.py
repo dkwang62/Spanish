@@ -178,4 +178,11 @@ else:
             format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
         )
         prompt = render_prompt(template_id, v)
-        render_prompt_box(prompt)
+
+        st.subheader("Generated AI Prompt")
+
+        st.code(
+            prompt,
+            language="text",
+        )
+
