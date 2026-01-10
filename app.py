@@ -41,7 +41,7 @@ with st.sidebar:
     if "search_input" not in st.session_state:
         st.session_state["search_input"] = ""
 
-    search_cols = st.columns([0.72, 0.28])
+    search_cols = st.columns([0.85, 0.15])
 
     with search_cols[0]:
         search_text = st.text_input(
@@ -52,10 +52,11 @@ with st.sidebar:
         )
 
     with search_cols[1]:
-        if st.button("Search", use_container_width=True):
+        if st.button("🔍", help="Search", use_container_width=True):
             st.session_state["search_query"] = search_text.strip()
-            st.session_state["search_input"] = ""   # clear box
+            st.session_state["search_input"] = ""
             st.rerun()
+
 
     # keep input synced
     st.session_state["search_input"] = search_text
