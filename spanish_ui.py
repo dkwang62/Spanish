@@ -1,6 +1,7 @@
-# spanish_ui.py (v6.3)
+# spanish_ui.py (v6.4)
 # UI helpers + Conjugation Dashboard rendering
-# Removed: render_breadcrumb (moved logic to app.py sidebar)
+# Updated: Preview card shows (Present, Preterite, Future) for 'Yo'
+# helpers moved to top for scope visibility
 
 from __future__ import annotations
 
@@ -64,76 +65,7 @@ AUX = {
 }
 
 
-# ---------- Styling ----------
-def apply_styles() -> None:
-    st.markdown(
-        """
-    <style>
-    .main .block-container {padding-top: 1.2rem; padding-bottom: 3rem;}
-    
-    .verb-card {
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-      padding: 18px 18px;
-      border-radius: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      border: 1px solid #e9ecef;
-      margin-bottom: 14px;
-    }
-    .verb-title {font-size: 1.6rem; font-weight: 800; margin: 0; line-height: 1.2;}
-    .verb-gloss {color: #444; font-size: 1.05rem; font-weight: 600; margin-top: 6px;}
-    .meta-row {display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top: 10px;}
-    .meta-tag {
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      padding: 4px 10px; border-radius: 8px;
-      font-size: 0.85rem; color: #495057; font-weight: 700;
-      display:inline-block;
-    }
-    .meta-tag-accent {background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); color: #856404; border: 1px solid #ffd54f;}
-    .hint {font-size: 0.78rem; color: #6c757d; font-weight: 700; margin-top: 6px;}
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
-
-def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Optional[int] = None) -> str:
-    inf = verb.get("infinitive", "")
-    gloss = verb.get("gloss_en") or verb.get("infinitive_english") or ""
-    usage = verb.get("usage", {}) or {}
-    pro = usage.get("pronominal_infinitive")
-    se_type = usage.get("se_type")
-    shift = usage.get("meaning_shift")
-
-    tags = []
-    if freq_rank is not None:
-        tags.append(f"<span class='meta-tag meta-tag-accent'>Rank {freq_rank}</span>")
-    if rating is not None:
-        tags.append(f"<span class='meta-tag'>Your rating: {rating}/5</span>")
-    if usage.get("is_pronominal") and pro:
-        tags.append(f"<span class='meta-tag'>Pronominal: {pro}</span>")
-        if se_type:
-            tags.append(f"<span class='meta-tag'>se-type: {se_type}</span>")
-
-    nf = verb.get("nonfinite") or {}
-    if nf.get("gerund"):
-        tags.append(f"<span class='meta-tag'>Gerund: {nf.get('gerund')}</span>")
-    if nf.get("past_participle"):
-        tags.append(f"<span class='meta-tag'>PP: {nf.get('past_participle')}</span>")
-
-    meta_html = f"<div class='meta-row'>{''.join(tags)}</div>" if tags else ""
-    shift_html = f"<div class='hint'>Meaning shift: {shift}</div>" if shift else ""
-
-    return f"""
-    <div class='verb-card'>
-      <div class='verb-title'>{inf}</div>
-      <div class='verb-gloss'>{gloss}</div>
-      {meta_html}
-      {shift_html}
-    </div>
-    """
-
-
-# ---------- Dashboard rendering ----------
+# ---------- Helpers (Moved to top) ----------
 def _get_conj_map(verb: dict, mood: str) -> Dict[str, Dict[str, str]]:
     out: Dict[str, Dict[str, str]] = {}
     for c in verb.get("conjugations", []) or []:
@@ -195,6 +127,100 @@ def _vos_affirmative_imperative(verb: dict) -> str:
     return ""
 
 
+# ---------- Styling ----------
+def apply_styles() -> None:
+    st.markdown(
+        """
+    <style>
+    .main .block-container {padding-top: 1.2rem; padding-bottom: 3rem;}
+    
+    .verb-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      padding: 18px 18px;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      border: 1px solid #e9ecef;
+      margin-bottom: 14px;
+    }
+    .verb-title {font-size: 1.6rem; font-weight: 800; margin: 0; line-height: 1.2;}
+    .verb-gloss {color: #444; font-size: 1.05rem; font-weight: 600; margin-top: 4px; margin-bottom: 8px;}
+    
+    /* New style for the Yo summary row */
+    .verb-mini-conj {
+        font-family: 'Source Code Pro', monospace;
+        font-size: 0.9rem;
+        color: #2c3e50;
+        background-color: #eef2f5;
+        padding: 4px 8px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        display: inline-block;
+        font-weight: 600;
+    }
+
+    .meta-row {display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top: 6px;}
+    .meta-tag {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      padding: 4px 10px; border-radius: 8px;
+      font-size: 0.85rem; color: #495057; font-weight: 700;
+      display:inline-block;
+    }
+    .meta-tag-accent {background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); color: #856404; border: 1px solid #ffd54f;}
+    .hint {font-size: 0.78rem; color: #6c757d; font-weight: 700; margin-top: 6px;}
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Optional[int] = None) -> str:
+    inf = verb.get("infinitive", "")
+    gloss = verb.get("gloss_en") or verb.get("infinitive_english") or ""
+    usage = verb.get("usage", {}) or {}
+    pro = usage.get("pronominal_infinitive")
+    se_type = usage.get("se_type")
+    shift = usage.get("meaning_shift")
+
+    # --- Extract Yo forms for: Present, Preterite, Future ---
+    indic = _get_conj_map(verb, "Indicativo")
+    yo_pres = indic.get("Presente", {}).get("yo", "-")
+    yo_pret = indic.get("Pretérito", {}).get("yo", "-")
+    yo_fut  = indic.get("Futuro", {}).get("yo", "-")
+    
+    # Format: "hablo, hablé, hablaré"
+    yo_summary_html = f"<div class='verb-mini-conj'>{yo_pres}, {yo_pret}, {yo_fut}</div>"
+
+    tags = []
+    if freq_rank is not None:
+        tags.append(f"<span class='meta-tag meta-tag-accent'>Rank {freq_rank}</span>")
+    if rating is not None:
+        tags.append(f"<span class='meta-tag'>Your rating: {rating}/5</span>")
+    if usage.get("is_pronominal") and pro:
+        tags.append(f"<span class='meta-tag'>Pronominal: {pro}</span>")
+        if se_type:
+            tags.append(f"<span class='meta-tag'>se-type: {se_type}</span>")
+
+    nf = verb.get("nonfinite") or {}
+    if nf.get("gerund"):
+        tags.append(f"<span class='meta-tag'>Gerund: {nf.get('gerund')}</span>")
+    if nf.get("past_participle"):
+        tags.append(f"<span class='meta-tag'>PP: {nf.get('past_participle')}</span>")
+
+    meta_html = f"<div class='meta-row'>{''.join(tags)}</div>" if tags else ""
+    shift_html = f"<div class='hint'>Meaning shift: {shift}</div>" if shift else ""
+
+    return f"""
+    <div class='verb-card'>
+      <div class='verb-title'>{inf}</div>
+      <div class='verb-gloss'>{gloss}</div>
+      {yo_summary_html}
+      {meta_html}
+      {shift_html}
+    </div>
+    """
+
+
+# ---------- Dashboard rendering ----------
 def _wide_table(title: str, col_titles: List[str], rows: List[List[str]]) -> None:
     st.markdown(f"### {title}")
     df = pd.DataFrame(rows, columns=["Pronoun"] + col_titles)
