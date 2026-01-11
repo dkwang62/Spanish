@@ -86,6 +86,13 @@ with st.sidebar:
             v = merge_usage(v, overrides)
             rank = rank_map.get(active_inf.lower())
             st.markdown(build_verb_card_html(v, rating=None, freq_rank=rank), unsafe_allow_html=True)
+
+            # NEW: Explicit button to open details from sidebar
+            if mode == "grid":
+                if st.button(f"Open {active_inf} Details ➡", use_container_width=True, type="primary"):
+                    st.session_state["selected"] = active_inf
+                    st.session_state["mode"] = "detail"
+                    st.rerun()
     else:
         st.caption("Click a verb tile to preview here.")
 
@@ -147,9 +154,6 @@ def build_list() -> list[str]:
 
 base_list = build_list()
 
-
-
-
 def render_tiles(infs: list[str], show_rank: bool, per_row: int = 6, max_items: int = 240):
     infs = infs[:max_items]
     for i in range(0, len(infs), per_row):
@@ -158,17 +162,31 @@ def render_tiles(infs: list[str], show_rank: bool, per_row: int = 6, max_items: 
         for j, inf in enumerate(row):
             r = rank_map.get(inf.lower())
             label = f"{inf} ({r})" if (show_rank and r is not None) else f"{inf}"
-            btn_type = "primary" if st.session_state.get("preview") == inf else "secondary"
+            
+            # Check if this specific tile is the one currently being previewed
+            is_preview = (st.session_state.get("preview") == inf)
+            
+            # Primary color if previewed, Secondary if not
+            btn_type = "primary" if is_preview else "secondary"
+            
+            # NEW: Dynamic Tooltip
+            tooltip_text = "Click to OPEN full details" if is_preview else "Click to PREVIEW in sidebar"
+
             cols[j].button(
                 label,
                 key=f"tile_{inf}",
                 use_container_width=True,
                 type=btn_type,
+                help=tooltip_text, # <--- Added help argument
                 on_click=click_tile,
                 args=(inf,),
             )
 
 if mode == "grid":
+
+    # NEW: Instructional Caption
+    st.info("👆 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** to open full details.", icon="ℹ️")
+
     show_rank = not sort_mode.startswith("3)")
 
     if sort_mode.startswith("2)"):
