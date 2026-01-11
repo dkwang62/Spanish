@@ -1,5 +1,5 @@
-# app.py (v6)
-# Updated: Navigation (Breadcrumbs + Buttons) moved to Sidebar
+# app.py (v6.1)
+# Navigation in Sidebar + Fixed sorting for accented -ír verbs
 
 import streamlit as st
 
@@ -97,8 +97,6 @@ with st.sidebar:
     st.divider()
 
     # --- 3. PREVIEW CARD (Only active in Grid Mode) ---
-    # In Detail mode, the card is less necessary in sidebar, 
-    # but we can show it if you want context. For now, we hide it in Detail mode to save space.
     if mode == "grid":
         st.subheader("Preview")
         if preview_inf:
@@ -188,8 +186,12 @@ if mode == "grid":
     if sort_mode.startswith("2)"):
         ar = [inf for inf in base_list if inf.lower().endswith("ar")]
         er = [inf for inf in base_list if inf.lower().endswith("er")]
-        ir = [inf for inf in base_list if inf.lower().endswith("ir")]
-        other = [inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir"))]
+        
+        # UPDATED: Match both "ir" and "ír" (accented)
+        ir = [inf for inf in base_list if inf.lower().endswith(("ir", "ír"))]
+        
+        # UPDATED: Exclude both "ir" and "ír" from 'other'
+        other = [inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir", "ír"))]
 
         st.subheader("-ar verbs")
         render_tiles(ar, show_rank=True)
@@ -199,6 +201,7 @@ if mode == "grid":
         st.divider()
         st.subheader("-ir verbs")
         render_tiles(ir, show_rank=True)
+        
         if other:
             st.divider()
             st.subheader("Other")
@@ -209,7 +212,6 @@ if mode == "grid":
 
 else:
     # --- DETAIL VIEW ---
-    # Validation
     if not selected_inf:
         st.warning("No verb selected.")
         st.stop()
@@ -221,8 +223,6 @@ else:
 
     v = merge_usage(v, overrides)
 
-    # Note: Breadcrumbs and Back button are now in the sidebar.
-    
     tabs = st.tabs(["Conjugations", "Prompt generator"])
     with tabs[0]:
         from spanish_ui import render_conjugation_dashboard
