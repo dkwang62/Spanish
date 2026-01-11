@@ -210,8 +210,8 @@ else:
 
     tabs = st.tabs(["Conjugations", "Prompt generator"])
     with tabs[0]:
-        df = conjugations_to_table(v.get("conjugations", []))
-        st.dataframe(df, use_container_width=True, height=640)
+        from spanish_ui import render_conjugation_dashboard
+        render_conjugation_dashboard(v)
 
     with tabs[1]:
         template_id = st.selectbox(
