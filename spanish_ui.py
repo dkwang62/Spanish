@@ -101,3 +101,68 @@ def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Op
 
 def render_prompt_box(prompt: str) -> None:
     st.text_area("Generated prompt (paste into ChatGPT)", value=prompt, height=420)
+
+import streamlit as st
+import pandas as pd
+
+PERSON_ORDER = [
+    "yo", "tú", "vos", "él/ella/usted",
+    "nosotros/nosotras", "vosotros/vosotras",
+    "ellos/ellas/ustedes"
+]
+
+MOOD_ORDER = [
+    "Indicative",
+    "Subjunctive",
+    "Imperative",
+]
+
+
+def render_conjugation_dashboard(verb: dict):
+    st.markdown(f"## 🔹 Verb: **{verb['infinitive'].upper()}**")
+    st.markdown("### Practice Conjugation Dashboard")
+
+    # ---- Participles ----
+    nf = verb.get("nonfinite", {})
+    st.markdown("### 🧩 Participles")
+    st.table(pd.DataFrame(
+        [
+            ["Present participle", nf.get("gerund")],
+            ["Past participle", nf.get("past_participle")],
+        ],
+        columns=["Type", "Form"]
+    ))
+
+    # ---- Group conjugations ----
+    grouped = {}
+    for c in verb.get("conjugations", []):
+        mood = c["mood"]
+        tense = c["tense"]
+        grouped.setdefault(mood, {}).setdefault(tense, []).append(c)
+
+    # ---- INDICATIVE / SUBJUNCTIVE / IMPERATIVE ----
+    for mood in MOOD_ORDER:
+        if mood not in grouped:
+            continue
+
+        icon = {
+            "Indicative": "🟦",
+            "Subjunctive": "🟩",
+            "Imperative": "🟨",
+        }.get(mood, "🔹")
+
+        st.markdown(f"## {icon} {mood.upper()}")
+
+        for tense, entries in grouped[mood].items():
+            st.markdown(f"### {tense}")
+
+            rows = []
+            forms = entries[0]["forms"]
+            for p in PERSON_ORDER:
+                if p in forms and forms[p]:
+                    rows.append([p, forms[p]])
+
+            st.table(pd.DataFrame(rows, columns=["Pronoun", "Form"]))
+
+    # ---- PERIPHRASTIC FORMS ----
+    render_periphrastic(verb)
