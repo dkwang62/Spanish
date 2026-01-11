@@ -1,6 +1,6 @@
-# spanish_ui.py (v6.2)
+# spanish_ui.py (v6.3)
 # UI helpers + Conjugation Dashboard rendering
-# Updated: Optional toggles for Vos and Vosotros
+# Removed: render_breadcrumb (moved logic to app.py sidebar)
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ JEHLE_PERSON_KEYS = [
 ]
 
 # App display order (includes "vos")
-# NOTE: The indices here must match the AUX lists below
 DISPLAY_PERSONS: List[Tuple[str, Optional[str]]] = [
     ("yo", "yo"),
     ("tú", "tú"),
@@ -32,7 +31,7 @@ DISPLAY_PERSONS: List[Tuple[str, Optional[str]]] = [
     ("ellos/ellas/Uds.", "ellos/ellas/ustedes"),
 ]
 
-# Auxiliaries for generated periphrastic tables (vos shares tú forms here)
+# Auxiliaries for generated periphrastic tables
 AUX = {
     "estar": {
         "Present": ["estoy", "estás", "estás", "está", "estamos", "estáis", "están"],
@@ -71,10 +70,7 @@ def apply_styles() -> None:
         """
     <style>
     .main .block-container {padding-top: 1.2rem; padding-bottom: 3rem;}
-
-    .crumb {font-size: 0.85rem; color: #6c757d; font-weight: 700; margin-bottom: 6px;}
-    .crumb b {color:#212529;}
-
+    
     .verb-card {
       background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
       padding: 18px 18px;
@@ -98,14 +94,6 @@ def apply_styles() -> None:
     """,
         unsafe_allow_html=True,
     )
-
-
-def render_breadcrumb(mode: str, infinitive: str) -> None:
-    if mode == "detail":
-        html = f"<div class='crumb'>Verbs › <b>{infinitive}</b> › Detail</div>"
-    else:
-        html = f"<div class='crumb'>Verbs › <b>{infinitive}</b></div>"
-    st.markdown(html, unsafe_allow_html=True)
 
 
 def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Optional[int] = None) -> str:
@@ -143,24 +131,6 @@ def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Op
       {shift_html}
     </div>
     """
-
-
-# ---------- Legacy helpers (kept for compatibility) ----------
-def conjugations_to_table(conjugations: List[dict]) -> pd.DataFrame:
-    rows = []
-    for c in conjugations:
-        mood = c.get("mood")
-        tense = c.get("tense")
-        forms = c.get("forms") or {}
-        row = {"mood": mood, "tense": tense}
-        for key in JEHLE_PERSON_KEYS:
-            row[key] = forms.get(key)
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-
-def render_prompt_box(prompt: str) -> None:
-    st.text_area("Generated prompt (paste into ChatGPT)", value=prompt, height=420, key="prompt_box")
 
 
 # ---------- Dashboard rendering ----------
