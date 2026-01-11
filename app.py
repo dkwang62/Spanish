@@ -1,5 +1,5 @@
-# app.py (v6.2)
-# Fixed: Option 2 now sorts alphabetically within groups (A-Z) instead of by rank.
+# app.py (v6.3)
+# Updated: Removed Tooltips on buttons (user request for iPad usability)
 
 import streamlit as st
 
@@ -120,7 +120,7 @@ with st.sidebar:
             "Sort grid",
             options=[
                 "1) Ranking (Most common first)",
-                "2) Grouped by ending (A-Z)",  # <--- UPDATED LABEL
+                "2) Grouped by ending (A-Z)",
                 "3) Alphabetical (A-Z)",
             ],
             index=0,
@@ -170,14 +170,14 @@ if mode == "grid":
                 # Check active state
                 is_preview = (st.session_state.get("preview") == inf)
                 btn_type = "primary" if is_preview else "secondary"
-                tooltip = "Click to OPEN full details" if is_preview else "Click to PREVIEW in sidebar"
+                
+                # REMOVED TOOLTIP (help=...)
 
                 cols[j].button(
                     label,
                     key=f"tile_{inf}",
                     use_container_width=True,
                     type=btn_type,
-                    help=tooltip,
                     on_click=click_tile,
                     args=(inf,),
                 )
@@ -185,7 +185,7 @@ if mode == "grid":
     show_rank = not sort_mode.startswith("3)")
 
     if sort_mode.startswith("2)"):
-        # UPDATED: Filter AND explicitly sort alphabetically
+        # Filter AND explicitly sort alphabetically
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
         
