@@ -1,5 +1,6 @@
-# spanish_core.py (v5)
+# spanish_core.py (v5.1)
 # Core: Jehle DB + SUBTLEX rank file + pronominal overrides + prompts
+# Updated: Integrated "Spanish Radix" v1 JSON task specifications
 
 from __future__ import annotations
 
@@ -9,13 +10,8 @@ from typing import Dict, List, Optional, Tuple
 
 import streamlit as st
 
-# --- Seed sets: embedded "starter truth" (you can edit/extend later) ---
-# Sources:
-# - Lawless Spanish: common reflexive verbs + idiomatic pronominal verbs
-# - Kwiziq: meaning-changing pronominal pairs (ir/irse, dormir/dormirse, etc.)
-
+# --- Seed sets: embedded "starter truth" ---
 REFLEXIVE_SEED = {
-    # daily routine / common reflexive forms (base infinitive -> pronominal infinitive)
     "despertar": "despertarse",
     "duchar": "ducharse",
     "bañar": "bañarse",
@@ -34,7 +30,6 @@ REFLEXIVE_SEED = {
 }
 
 PRONOMINAL_SEED = {
-    # meaning-shift / idiomatic pronominal verbs (base -> pronominal)
     "ir": "irse",
     "dormir": "dormirse",
     "poner": "ponerse",
@@ -51,7 +46,6 @@ PRONOMINAL_SEED = {
     "hacer": "hacerse",
     "abonar": "abonarse",
 }
-
 
 
 @st.cache_data(show_spinner=False)
@@ -105,9 +99,6 @@ def save_overrides(overrides_path: str, merged_overrides: Dict[str, dict]) -> No
 
 @st.cache_data(show_spinner=False)
 def load_frequency_map(freq_path: str) -> Dict[str, int]:
-    """
-    Expects a JSON: { "ser": 1, "haber": 2, ... } (lower rank = more common)
-    """
     p = Path(freq_path)
     if not p.exists():
         return {}
@@ -127,65 +118,76 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
         return {}
 
 
+# --- UPDATED TEMPLATES (Spanish Radix v1) ---
 TEMPLATES: Dict[str, dict] = {
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
-        "prompt": """You are a Spanish grammar tutor.
+        "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
 
-Target verb: {pronominal_infinitive}
-Base verb: {infinitive}
-Meaning shift: {meaning_shift}
-Level: A2–B1
+**Global Constraints & Safety Rules:**
+1. **Consistency:** Use the SAME subject and SAME non-verb vocabulary across all sentences in Sections A-D. Vary only the verb tense/mood.
+2. **Highlighting:** Highlight the CLITIC + VERB in **ALL CAPS** (e.g., "ME LAVO", "LAVARME").
+3. **Time/Tense Agreement:** Ensure time expressions (hoy, ayer, mañana) match the verb tense.
+4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers (querer que, dudar que, etc.).
 
-1) Briefly explain clitic placement rules:
-- before conjugated verb
-- attached to infinitive
-- attached to gerund
-- positive imperative
-- negative imperative
+**Task:** REFLEXIVE_PLACEMENT_CORE
+**Target Verb:** {infinitive}
+**Pronominal Form:** {pronominal_infinitive}
+**Meaning Shift:** {meaning_shift}
 
-2) Generate 20 short sentences (Spanish + English):
-- 5 with clitic before conjugated verb
-- 5 with attachment to infinitive
-- 5 with attachment to gerund
-- 5 imperatives (positive and negative)
+**Step 1: Explain Rules**
+Briefly explain clitic placement for: Conjugated verbs, Infinitives, Gerunds, Imperatives.
 
-Rules:
-- 6–10 words per Spanish sentence
-- Use common vocabulary only
-- Highlight CLITIC + VERB IN ALL CAPS
-- Do not reuse the same subject twice in a row
+**Step 2: Generate Sections (5 sentences each)**
 
-3) Drill:
-- 10 fill-in-the-blank sentences (mixed structures)
-- Provide answer key
+* **Section A: Indicative (Clitic before conjugated verb)**
+    * Vary tenses (Present, Preterite, Future, etc.).
+    * Format: Spanish (English)
+* **Section B: Infinitive (Attached clitic)**
+    * Structure: verb + infinitive w/ clitic.
+* **Section C: Gerund (Attached clitic)**
+    * Structure: estar + gerund w/ clitic.
+* **Section D: Imperatives**
+    * Mix of Positive (attached) and Negative (before verb).
+* **Section E: Subjunctive**
+    * Structure: [Trigger] + que + [Subject] + [Clitic] + [Subjunctive Verb].
+    * *Note: Subject must change from trigger to clause.*
+
+**Step 3: Drill**
+Provide 10 fill-in-the-blank sentences mixing all structures above. Provide an Answer Key at the end.
 """
     },
     "PRONOMINAL_CONTRAST_PAIR": {
         "name": "Base vs pronominal contrast",
-        "prompt": """Teach the difference between:
-A) {infinitive}
-B) {pronominal_infinitive}
+        "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
 
-Meaning shift for the pronominal form: {meaning_shift}
+**Global Constraints:**
+1. **Highlighting:** Highlight the target VERB in **ALL CAPS**.
+2. **Clarity:** Ensure the English translation clearly reflects the specific meaning difference.
 
-1) Explain the meaning difference in 4–5 simple lines.
+**Task:** PRONOMINAL_CONTRAST_PAIR
+**Base Verb:** {infinitive}
+**Pronominal Form:** {pronominal_infinitive}
+**Meaning Shift:** {meaning_shift}
 
-2) Provide 12 contrast pairs:
-- 6 present tense
-- 3 past (preterite vs imperfect where natural)
-- 3 future or “ir a + infinitive”
+**Step 1: Explanation**
+Explain the semantic contrast in 4–5 lines. Focus on the shift in meaning or nuance caused by the clitic.
 
-Each pair:
-- Sentence A uses {infinitive}
-- Sentence B uses {pronominal_infinitive}
-- Spanish + English
-- Highlight the verb in ALL CAPS
+**Step 2: Contrast Pairs (12 Total)**
+Generate 12 pairs of sentences. In each pair:
+* **Sentence A:** Uses the Base Verb ({infinitive}).
+* **Sentence B:** Uses the Pronominal Verb ({pronominal_infinitive}).
+* Both sentences should share context where possible to highlight the difference.
 
-3) Decision drill:
-- 10 short situations
-- Ask which verb fits better
-- Provide correct answers with one-line explanations
+**Distribution Requirements:**
+* **6 Pairs:** Present Tense
+* **3 Pairs:** Past Tense (Preterite vs Imperfect where natural)
+* **3 Pairs:** Future or "Ir a + inf"
+
+**Step 3: Decision Drill**
+Create 10 short scenarios/sentences with a blank.
+* The user must decide between the Base or Pronominal form.
+* Provide the Answer Key with a one-line explanation for each.
 """
     },
 }
@@ -238,16 +240,21 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     return verb2
 
 
-
 def render_prompt(template_id: str, verb: dict) -> str:
     t = TEMPLATES.get(template_id)
     if not t:
         return ""
     usage = verb.get("usage", {}) or {}
+    
+    # Safe fallback for formatting keys
+    infinitive = verb.get("infinitive", "VERB")
+    pronominal = usage.get("pronominal_infinitive") or f"{infinitive}se"
+    shift = usage.get("meaning_shift") or "Standard usage"
+
     return t["prompt"].format(
-        infinitive=verb.get("infinitive"),
-        pronominal_infinitive=usage.get("pronominal_infinitive") or verb.get("infinitive"),
-        meaning_shift=usage.get("meaning_shift") or "",
+        infinitive=infinitive,
+        pronominal_infinitive=pronominal,
+        meaning_shift=shift,
     )
 
 
