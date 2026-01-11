@@ -1,5 +1,7 @@
-# app.py (v6.3)
-# Updated: Removed Tooltips on buttons (user request for iPad usability)
+# app.py (v6.6)
+# Updates:
+# 1. Sort options changed to: "Alphabetical", "ar/er/ir/se", "Popularity".
+# 2. Default sort is now "Alphabetical".
 
 import streamlit as st
 
@@ -39,7 +41,6 @@ with st.sidebar:
     # --- 1. NAVIGATION GROUP ---
     st.header("Navigation")
     
-    # Breadcrumb Logic
     if mode == "grid":
         st.markdown("📍 **Home / Grid**")
     else:
@@ -48,17 +49,14 @@ with st.sidebar:
     # Action Buttons Logic
     if mode == "grid":
         if preview_inf:
-            # "Open Details" button acts as a redundant way to enter detail mode
             if st.button(f"Open '{preview_inf}' Details ➡", use_container_width=True, type="primary"):
                 st.session_state["selected"] = preview_inf
                 st.session_state["mode"] = "detail"
                 st.rerun()
         else:
-            # Placeholder to keep layout stable
             st.button("Select a verb to preview...", disabled=True, use_container_width=True)
             
     elif mode == "detail":
-        # "Back to Grid" button
         if st.button("⬅ Back to Verb Grid", use_container_width=True, type="primary"):
             back_to_grid()
             st.rerun()
@@ -87,7 +85,6 @@ with st.sidebar:
             st.session_state["search_input"] = ""
             st.rerun()
 
-    # Sync input
     st.session_state["search_input"] = search_text
 
     if st.button("Clear search", use_container_width=True):
@@ -96,7 +93,7 @@ with st.sidebar:
 
     st.divider()
 
-    # --- 3. PREVIEW CARD (Only active in Grid Mode) ---
+    # --- 3. PREVIEW CARD (Grid Only) ---
     if mode == "grid":
         st.subheader("Preview")
         if preview_inf:
@@ -107,24 +104,12 @@ with st.sidebar:
                 st.markdown(build_verb_card_html(v, rating=None, freq_rank=rank), unsafe_allow_html=True)
         else:
             st.caption("Click a tile to preview.")
-        
         st.divider()
 
     # --- 4. SETTINGS ---
     st.subheader("Display Settings")
     show_vos = st.checkbox("Show 'vos' (voseo)", value=True)
     show_vosotros = st.checkbox("Show 'vosotros'", value=True)
-    
-    if mode == "grid":
-        sort_mode = st.selectbox(
-            "Sort grid",
-            options=[
-                "1) Ranking (Most common first)",
-                "2) Grouped by ending (A-Z)",
-                "3) Alphabetical (A-Z)",
-            ],
-            index=0,
-        )
 
 
 # ==========================================
@@ -135,7 +120,16 @@ if mode == "grid":
     # Instruction Tip
     st.info("👆 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** (or the sidebar button) to open details.", icon="ℹ️")
 
-    # Helper to build list
+    # --- TOP CONTROLS (Sort) ---
+    sort_option = st.radio(
+        "Sort Order",
+        options=["Alphabetical", "ar/er/ir/se", "Popularity"],
+        index=0, # Default: Alphabetical
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+
+    # --- List Building Logic ---
     def _rank(inf: str) -> int:
         return rank_map.get(inf.lower(), 10_000_000)
 
@@ -149,30 +143,28 @@ if mode == "grid":
         
         base = list(dict.fromkeys(base))
 
-        if sort_mode.startswith("3)"):
-            return sorted(base, key=lambda x: x.lower())
+        # "Popularity" sorts by Rank
+        if sort_option == "Popularity":
+            base.sort(key=lambda inf: (_rank(inf), inf))
+            return base
         
-        # Default sort is by rank (used for option 1 and as base for option 2)
-        base.sort(key=lambda inf: (_rank(inf), inf))
-        return base
+        # "Alphabetical" and "ar/er/ir/se" (group basis) sort A-Z
+        return sorted(base, key=lambda x: x.lower())
 
     base_list = build_list()
 
-    def render_tiles(infs: list[str], show_rank: bool, per_row: int = 6, max_items: int = 240):
+    def render_tiles(infs: list[str], per_row: int = 6, max_items: int = 240):
         infs = infs[:max_items]
         for i in range(0, len(infs), per_row):
             row = infs[i:i+per_row]
             cols = st.columns(per_row)
             for j, inf in enumerate(row):
-                r = rank_map.get(inf.lower())
-                label = f"{inf} ({r})" if (show_rank and r is not None) else f"{inf}"
+                label = f"{inf}"
                 
                 # Check active state
                 is_preview = (st.session_state.get("preview") == inf)
                 btn_type = "primary" if is_preview else "secondary"
                 
-                # REMOVED TOOLTIP (help=...)
-
                 cols[j].button(
                     label,
                     key=f"tile_{inf}",
@@ -182,10 +174,8 @@ if mode == "grid":
                     args=(inf,),
                 )
 
-    show_rank = not sort_mode.startswith("3)")
-
-    if sort_mode.startswith("2)"):
-        # Filter AND explicitly sort alphabetically
+    if sort_option == "ar/er/ir/se":
+        # Grouped View (A-Z within groups)
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
         
@@ -196,22 +186,22 @@ if mode == "grid":
         other = sorted([inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir", "ír"))], key=lambda x: x.lower())
 
         st.subheader("-ar verbs")
-        render_tiles(ar, show_rank=True)
+        render_tiles(ar)
         st.divider()
         st.subheader("-er verbs")
-        render_tiles(er, show_rank=True)
+        render_tiles(er)
         st.divider()
         st.subheader("-ir verbs")
-        render_tiles(ir, show_rank=True)
+        render_tiles(ir)
         
         if other:
             st.divider()
             st.subheader("Other")
-            render_tiles(other, show_rank=True)
+            render_tiles(other)
 
     else:
-        # Mode 1 (Rank) or Mode 3 (Alpha)
-        render_tiles(base_list, show_rank=show_rank, max_items=600)
+        # "Alphabetical" or "Popularity" (Flat list)
+        render_tiles(base_list, max_items=600)
 
 else:
     # --- DETAIL VIEW ---
