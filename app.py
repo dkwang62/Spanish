@@ -1,5 +1,5 @@
-# app.py (v6.1)
-# Navigation in Sidebar + Fixed sorting for accented -ír verbs
+# app.py (v6.2)
+# Fixed: Option 2 now sorts alphabetically within groups (A-Z) instead of by rank.
 
 import streamlit as st
 
@@ -119,9 +119,9 @@ with st.sidebar:
         sort_mode = st.selectbox(
             "Sort grid",
             options=[
-                "1) Ranking",
-                "2) -ar / -er / -ir then ranking",
-                "3) Alphabetical (no ranking)",
+                "1) Ranking (Most common first)",
+                "2) Grouped by ending (A-Z)",  # <--- UPDATED LABEL
+                "3) Alphabetical (A-Z)",
             ],
             index=0,
         )
@@ -152,6 +152,7 @@ if mode == "grid":
         if sort_mode.startswith("3)"):
             return sorted(base, key=lambda x: x.lower())
         
+        # Default sort is by rank (used for option 1 and as base for option 2)
         base.sort(key=lambda inf: (_rank(inf), inf))
         return base
 
@@ -184,14 +185,15 @@ if mode == "grid":
     show_rank = not sort_mode.startswith("3)")
 
     if sort_mode.startswith("2)"):
-        ar = [inf for inf in base_list if inf.lower().endswith("ar")]
-        er = [inf for inf in base_list if inf.lower().endswith("er")]
+        # UPDATED: Filter AND explicitly sort alphabetically
+        ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
+        er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
         
-        # UPDATED: Match both "ir" and "ír" (accented)
-        ir = [inf for inf in base_list if inf.lower().endswith(("ir", "ír"))]
+        # Match both "ir" and "ír"
+        ir = sorted([inf for inf in base_list if inf.lower().endswith(("ir", "ír"))], key=lambda x: x.lower())
         
-        # UPDATED: Exclude both "ir" and "ír" from 'other'
-        other = [inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir", "ír"))]
+        # Exclude all endings
+        other = sorted([inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir", "ír"))], key=lambda x: x.lower())
 
         st.subheader("-ar verbs")
         render_tiles(ar, show_rank=True)
@@ -208,6 +210,7 @@ if mode == "grid":
             render_tiles(other, show_rank=True)
 
     else:
+        # Mode 1 (Rank) or Mode 3 (Alpha)
         render_tiles(base_list, show_rank=show_rank, max_items=600)
 
 else:
