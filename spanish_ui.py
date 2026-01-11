@@ -1,6 +1,6 @@
-# spanish_ui.py (v6.1)
-# UI helpers + Conjugation Dashboard rendering (Chinese-app style study view)
-# Updated to correctly handle Rioplatense Voseo (accentuation & stem restoration)
+# spanish_ui.py (v6.2)
+# UI helpers + Conjugation Dashboard rendering
+# Updated: Optional toggles for Vos and Vosotros
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ JEHLE_PERSON_KEYS = [
 ]
 
 # App display order (includes "vos")
+# NOTE: The indices here must match the AUX lists below
 DISPLAY_PERSONS: List[Tuple[str, Optional[str]]] = [
     ("yo", "yo"),
     ("tú", "tú"),
@@ -146,7 +147,6 @@ def build_verb_card_html(verb: dict, rating: Optional[int] = None, freq_rank: Op
 
 # ---------- Legacy helpers (kept for compatibility) ----------
 def conjugations_to_table(conjugations: List[dict]) -> pd.DataFrame:
-    """Legacy: single flat table. Kept so older app.py versions don't break."""
     rows = []
     for c in conjugations:
         mood = c.get("mood")
@@ -160,15 +160,11 @@ def conjugations_to_table(conjugations: List[dict]) -> pd.DataFrame:
 
 
 def render_prompt_box(prompt: str) -> None:
-    """Prefer st.code() in app.py for a built-in copy button. Kept for compatibility."""
     st.text_area("Generated prompt (paste into ChatGPT)", value=prompt, height=420, key="prompt_box")
 
 
 # ---------- Dashboard rendering ----------
 def _get_conj_map(verb: dict, mood: str) -> Dict[str, Dict[str, str]]:
-    """
-    Returns: { tense: { jehle_person_key: form } }
-    """
     out: Dict[str, Dict[str, str]] = {}
     for c in verb.get("conjugations", []) or []:
         if c.get("mood") == mood:
@@ -177,15 +173,8 @@ def _get_conj_map(verb: dict, mood: str) -> Dict[str, Dict[str, str]]:
 
 
 def _vos_form_for_present(verb: dict) -> str:
-    """
-    Generate 'vos' present indicative.
-    Rules:
-      - Generally restores the stem (no diphthong) and accents the last syllable.
-      - -ar -> -ás, -er -> -és, -ir -> -ís
-    """
     inf = (verb.get("infinitive") or "").lower()
     
-    # Absolute irregulars for Voseo
     if inf == "ser": return "sos"
     if inf == "ir": return "vas"
     if inf == "haber": return "has"
@@ -198,23 +187,14 @@ def _vos_form_for_present(verb: dict) -> str:
     if ending == "er": return f"{stem}és"
     if ending == "ir": return f"{stem}ís"
     
-    # Fallback to standard tú if detection fails
     indic = _get_conj_map(verb, "Indicativo")
     return indic.get("Presente", {}).get("tú", "")
 
 
 def _vos_form_for_subjunctive(verb: dict) -> str:
-    """
-    Generate 'vos' present subjunctive.
-    Rules:
-      - Swaps vowel and adds accent to last syllable.
-      - -ar -> -és
-      - -er/-ir -> -ás
-    """
     inf = (verb.get("infinitive") or "").lower()
     
-    # Specific irregulars
-    if inf == "ir": return "vayas" # In some dialects, 'vayás' exists but 'vayas' is common
+    if inf == "ir": return "vayas" 
     if inf == "saber": return "sepás"
     if inf == "ser": return "seás"
     if inf == "haber": return "hayas"
@@ -226,22 +206,14 @@ def _vos_form_for_subjunctive(verb: dict) -> str:
     if ending == "ar": return f"{stem}és"
     if ending in ["er", "ir"]: return f"{stem}ás"
     
-    # Fallback
     subj = _get_conj_map(verb, "Subjuntivo")
     return subj.get("Presente", {}).get("tú", "")
 
 
 def _vos_affirmative_imperative(verb: dict) -> str:
-    """
-    Heuristic voseo imperative affirmative:
-      -ar -> stem + á
-      -er -> stem + é
-      -ir -> stem + í
-    """
     inf = (verb.get("infinitive") or "").lower()
     
-    # Irregulars
-    if inf == "ir": return "andá" # 'ir' uses 'andá' in voseo
+    if inf == "ir": return "andá"
     
     if len(inf) < 3: return ""
     stem = inf[:-2]
@@ -263,14 +235,22 @@ def _build_rows_for_tenses(
     tenses: List[str],
     tense_to_forms: Dict[str, Dict[str, str]],
     vos_present_override: Optional[str] = None,
+    show_vos: bool = True,
+    show_vosotros: bool = True,
 ) -> List[List[str]]:
     rows: List[List[str]] = []
+    
     for display_label, jehle_key in DISPLAY_PERSONS:
+        # Filter based on flags
+        if display_label == "vos" and not show_vos:
+            continue
+        if display_label == "vosotros" and not show_vosotros:
+            continue
+
         row = [display_label]
         for tense in tenses:
             forms = tense_to_forms.get(tense, {})
             if display_label == "vos":
-                # Apply override if we are in Present tense (Indicative or Subjunctive)
                 if (tense == "Presente" or tense == "Present") and vos_present_override is not None:
                     row.append(vos_present_override)
                 else:
@@ -281,7 +261,7 @@ def _build_rows_for_tenses(
     return rows
 
 
-def render_conjugation_dashboard(verb: dict) -> None:
+def render_conjugation_dashboard(verb: dict, show_vos: bool = True, show_vosotros: bool = True) -> None:
     infinitive = verb.get("infinitive", "")
     st.markdown(f"## 🔹 Verb: **{infinitive.upper()}**")
     st.markdown("### Practice Conjugation Dashboard")
@@ -303,7 +283,12 @@ def render_conjugation_dashboard(verb: dict) -> None:
     indic = _get_conj_map(verb, "Indicativo")
     indic_tenses = ["Presente", "Pretérito", "Imperfecto", "Condicional", "Futuro"]
     vos_indic_pres = _vos_form_for_present(verb)
-    rows = _build_rows_for_tenses(indic_tenses, indic, vos_present_override=vos_indic_pres)
+    rows = _build_rows_for_tenses(
+        indic_tenses, indic, 
+        vos_present_override=vos_indic_pres, 
+        show_vos=show_vos, 
+        show_vosotros=show_vosotros
+    )
     _wide_table(
         f'Indicative of "{infinitive}"',
         ["Present", "Preterite", "Imperfect", "Conditional", "Future"],
@@ -314,7 +299,12 @@ def render_conjugation_dashboard(verb: dict) -> None:
     subj = _get_conj_map(verb, "Subjuntivo")
     subj_tenses = ["Presente", "Imperfecto", "Futuro"]
     vos_subj_pres = _vos_form_for_subjunctive(verb)
-    rows = _build_rows_for_tenses(subj_tenses, subj, vos_present_override=vos_subj_pres)
+    rows = _build_rows_for_tenses(
+        subj_tenses, subj, 
+        vos_present_override=vos_subj_pres,
+        show_vos=show_vos, 
+        show_vosotros=show_vosotros
+    )
     _wide_table(
         f'Subjunctive of "{infinitive}"',
         ["Present", "Imperfect", "Future"],
@@ -325,7 +315,6 @@ def render_conjugation_dashboard(verb: dict) -> None:
     imp_aff = _get_conj_map(verb, "Imperativo Afirmativo")
     imp_neg = _get_conj_map(verb, "Imperativo Negativo")
 
-    # In Jehle, imperative "tense" may be absent or vary. We handle by taking the first entry.
     aff_forms = next(iter(imp_aff.values()), {}) if imp_aff else {}
     neg_forms = next(iter(imp_neg.values()), {}) if imp_neg else {}
 
@@ -337,48 +326,52 @@ def render_conjugation_dashboard(verb: dict) -> None:
     rows.append(["yo", "-", "-"])
     rows.append(["tú", aff_forms.get("tú", ""), neg_wrap(neg_forms.get("tú", ""))])
 
-    # Vos Imperative
-    # Affirmative: Generated helper
-    # Negative: "no" + Generated Subjunctive Helper
-    vos_aff = _vos_affirmative_imperative(verb)
-    vos_neg_cmd = neg_wrap(vos_subj_pres) 
-    rows.append(["vos", vos_aff, vos_neg_cmd])
+    if show_vos:
+        vos_aff = _vos_affirmative_imperative(verb)
+        vos_neg_cmd = neg_wrap(vos_subj_pres) 
+        rows.append(["vos", vos_aff, vos_neg_cmd])
 
     rows.append(["Ud.", aff_forms.get("él/ella/usted", ""), neg_wrap(neg_forms.get("él/ella/usted", ""))])
     rows.append(["nosotros", aff_forms.get("nosotros/nosotras", ""), neg_wrap(neg_forms.get("nosotros/nosotras", ""))])
-    rows.append(["vosotros", aff_forms.get("vosotros/vosotras", ""), neg_wrap(neg_forms.get("vosotros/vosotras", ""))])
+    
+    if show_vosotros:
+        rows.append(["vosotros", aff_forms.get("vosotros/vosotras", ""), neg_wrap(neg_forms.get("vosotros/vosotras", ""))])
+    
     rows.append(["Uds.", aff_forms.get("ellos/ellas/ustedes", ""), neg_wrap(neg_forms.get("ellos/ellas/ustedes", ""))])
 
     _wide_table(f'Imperative of "{infinitive}"', ["Affirmative", "Negative"], rows)
 
-    # --- PROGRESSIVE (estar + gerund), generated across 5 tenses ---
-    render_progressive_table(verb)
+    # --- PROGRESSIVE ---
+    render_progressive_table(verb, show_vos, show_vosotros)
 
     # --- PERFECT + PERFECT SUBJUNCTIVE ---
-    render_perfect_tables(verb)
+    render_perfect_tables(verb, show_vos, show_vosotros)
 
-    # --- INFORMAL FUTURE (ir a) ---
-    render_informal_future_table(verb)
+    # --- INFORMAL FUTURE ---
+    render_informal_future_table(verb, show_vos, show_vosotros)
 
 
-def render_progressive_table(verb: dict) -> None:
+def render_progressive_table(verb: dict, show_vos: bool = True, show_vosotros: bool = True) -> None:
     infinitive = verb.get("infinitive", "")
     ger = (verb.get("nonfinite", {}) or {}).get("gerund", "")
     tenses = ["Present", "Preterite", "Imperfect", "Conditional", "Future"]
 
     rows = []
     for i, (label, _) in enumerate(DISPLAY_PERSONS):
+        if label == "vos" and not show_vos: continue
+        if label == "vosotros" and not show_vosotros: continue
+        
         aux = [AUX["estar"][t][i] for t in tenses]
         rows.append([label] + [f"{aux[j]} {ger}".strip() for j in range(len(tenses))])
 
     _wide_table(f'Progressive of "{infinitive}"', tenses, rows)
 
 
-def render_perfect_tables(verb: dict) -> None:
+def render_perfect_tables(verb: dict, show_vos: bool = True, show_vosotros: bool = True) -> None:
     infinitive = verb.get("infinitive", "")
     pp = (verb.get("nonfinite", {}) or {}).get("past_participle", "")
 
-    # Prefer Jehle compound tenses if present (more accurate than generated AUX)
+    # Prefer Jehle compound tenses if present
     indic = _get_conj_map(verb, "Indicativo")
     indic_map = {
         "Present": "Pretérito perfecto",
@@ -392,6 +385,9 @@ def render_perfect_tables(verb: dict) -> None:
         col_titles = list(indic_map.keys())
         rows = []
         for display_label, jehle_key in DISPLAY_PERSONS:
+            if display_label == "vos" and not show_vos: continue
+            if display_label == "vosotros" and not show_vosotros: continue
+
             row = [display_label]
             for col, jehle_tense in indic_map.items():
                 forms = indic.get(jehle_tense, {})
@@ -405,6 +401,9 @@ def render_perfect_tables(verb: dict) -> None:
         tenses = ["Present", "Preterite", "Past", "Conditional", "Future"]
         rows = []
         for i, (label, _) in enumerate(DISPLAY_PERSONS):
+            if label == "vos" and not show_vos: continue
+            if label == "vosotros" and not show_vosotros: continue
+
             aux = [AUX["haber"][t][i] for t in tenses]
             rows.append([label] + [f"{aux[j]} {pp}".strip() for j in range(len(tenses))])
         _wide_table(f'Perfect of "{infinitive}"', tenses, rows)
@@ -417,6 +416,9 @@ def render_perfect_tables(verb: dict) -> None:
         col_titles = list(subj_map.keys())
         rows = []
         for display_label, jehle_key in DISPLAY_PERSONS:
+            if display_label == "vos" and not show_vos: continue
+            if display_label == "vosotros" and not show_vosotros: continue
+
             row = [display_label]
             for col, jehle_tense in subj_map.items():
                 forms = subj.get(jehle_tense, {})
@@ -430,15 +432,21 @@ def render_perfect_tables(verb: dict) -> None:
         tenses = ["Present", "Past", "Future"]
         rows = []
         for i, (label, _) in enumerate(DISPLAY_PERSONS):
+            if label == "vos" and not show_vos: continue
+            if label == "vosotros" and not show_vosotros: continue
+
             aux = [AUX["haber_subj"][t][i] for t in tenses]
             rows.append([label] + [f"{aux[j]} {pp}".strip() for j in range(len(tenses))])
         _wide_table(f'Perfect Subjunctive of "{infinitive}"', tenses, rows)
 
 
-def render_informal_future_table(verb: dict) -> None:
+def render_informal_future_table(verb: dict, show_vos: bool = True, show_vosotros: bool = True) -> None:
     infinitive = verb.get("infinitive", "")
     rows = []
     for i, (label, _) in enumerate(DISPLAY_PERSONS):
+        if label == "vos" and not show_vos: continue
+        if label == "vosotros" and not show_vosotros: continue
+
         aux = AUX["ir"]["Informal Future"][i]
         rows.append([label, f"{aux} a {infinitive}"])
     _wide_table(f'Informal Future of "{infinitive}"', ["Informal Future"], rows)
