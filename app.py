@@ -33,6 +33,10 @@ st.title("Spanish Verb Lab")
 # ---------- Sidebar: search + preview card ----------
 with st.sidebar:
 
+
+
+
+
     st.header("Verbs")
 
     if "search_query" not in st.session_state:
@@ -86,7 +90,11 @@ with st.sidebar:
         st.caption("Click a verb tile to preview here.")
 
 
-
+    st.divider()
+    st.header("Settings")
+    
+    show_vos = st.checkbox("Show 'vos' (voseo)", value=True)
+    show_vosotros = st.checkbox("Show 'vosotros'", value=True)
 
 
 
