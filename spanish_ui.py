@@ -118,6 +118,50 @@ MOOD_ORDER = [
 ]
 
 
+def render_periphrastic(verb: dict) -> None:
+    infinitive = verb.get("infinitive", "")
+    nf = verb.get("nonfinite", {}) or {}
+    gerund = nf.get("gerund", "")
+    past_part = nf.get("past_participle", "")
+
+    st.markdown("## 🟪 PROGRESSIVE (estar + gerund)")
+    st.table(pd.DataFrame([
+        ["yo", f"estoy {gerund}"],
+        ["tú", f"estás {gerund}"],
+        ["vos", f"estás {gerund}"],
+        ["él / ella / Ud.", f"está {gerund}"],
+        ["nosotros", f"estamos {gerund}"],
+        ["vosotros", f"estáis {gerund}"],
+        ["ellos", f"están {gerund}"],
+    ], columns=["Pronoun", "Form"]))
+
+    st.markdown("## 🟥 PERFECT (haber + participle)")
+    st.table(pd.DataFrame([
+        ["yo", f"he {past_part}"],
+        ["tú", f"has {past_part}"],
+        ["vos", f"has {past_part}"],
+        ["él / ella / Ud.", f"ha {past_part}"],
+        ["nosotros", f"hemos {past_part}"],
+        ["vosotros", f"habéis {past_part}"],
+        ["ellos", f"han {past_part}"],
+    ], columns=["Pronoun", "Form"]))
+
+    st.markdown("## 🟧 INFORMAL FUTURE (ir a)")
+    st.table(pd.DataFrame([
+        ["yo", f"voy a {infinitive}"],
+        ["tú", f"vas a {infinitive}"],
+        ["vos", f"vas a {infinitive}"],
+        ["él / ella / Ud.", f"va a {infinitive}"],
+        ["nosotros", f"vamos a {infinitive}"],
+        ["vosotros", f"vais a {infinitive}"],
+        ["ellos", f"van a {infinitive}"],
+    ], columns=["Pronoun", "Form"]))
+
+
+
+
+
+
 def render_conjugation_dashboard(verb: dict):
     st.markdown(f"## 🔹 Verb: **{verb['infinitive'].upper()}**")
     st.markdown("### Practice Conjugation Dashboard")
