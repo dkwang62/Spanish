@@ -1,5 +1,6 @@
-# spanish_ui.py (v6)
+# spanish_ui.py (v6.1)
 # UI helpers + Conjugation Dashboard rendering (Chinese-app style study view)
+# Updated to correctly handle Rioplatense Voseo (accentuation & stem restoration)
 
 from __future__ import annotations
 
@@ -175,57 +176,59 @@ def _get_conj_map(verb: dict, mood: str) -> Dict[str, Dict[str, str]]:
     return out
 
 
-def _is_regular_verb(verb: dict) -> bool:
-    """
-    Best-effort regular detection using Jehle present indicative forms.
-    Regularity is used only to generate a more accurate 'vos' in present indicative.
-    """
-    inf = (verb.get("infinitive") or "").lower()
-    if len(inf) < 3:
-        return False
-    ending = inf[-2:]
-    stem = inf[:-2]
-
-    indic = _get_conj_map(verb, "Indicativo")
-    pres = indic.get("Presente", {})
-    if not pres:
-        return False
-
-    yo = (pres.get("yo") or "").lower()
-    tu = (pres.get("tú") or "").lower()
-
-    if ending == "ar":
-        return yo == f"{stem}o" and tu == f"{stem}as"
-    if ending == "er":
-        return yo == f"{stem}o" and tu == f"{stem}es"
-    if ending == "ir":
-        return yo == f"{stem}o" and tu == f"{stem}es"
-    return False
-
-
 def _vos_form_for_present(verb: dict) -> str:
     """
-    Generate 'vos' present indicative for regular verbs; otherwise fall back to tú form.
-    Regular endings:
-      -ar -> -ás, -er -> -és, -ir -> -ís
+    Generate 'vos' present indicative.
+    Rules:
+      - Generally restores the stem (no diphthong) and accents the last syllable.
+      - -ar -> -ás, -er -> -és, -ir -> -ís
     """
     inf = (verb.get("infinitive") or "").lower()
-    indic = _get_conj_map(verb, "Indicativo")
-    pres = indic.get("Presente", {})
-    tu = pres.get("tú") or ""
-
-    if not _is_regular_verb(verb):
-        return tu
-
+    
+    # Absolute irregulars for Voseo
+    if inf == "ser": return "sos"
+    if inf == "ir": return "vas"
+    if inf == "haber": return "has"
+    
+    if len(inf) < 3: return ""
     stem = inf[:-2]
     ending = inf[-2:]
-    if ending == "ar":
-        return f"{stem}ás"
-    if ending == "er":
-        return f"{stem}és"
-    if ending == "ir":
-        return f"{stem}ís"
-    return tu
+    
+    if ending == "ar": return f"{stem}ás"
+    if ending == "er": return f"{stem}és"
+    if ending == "ir": return f"{stem}ís"
+    
+    # Fallback to standard tú if detection fails
+    indic = _get_conj_map(verb, "Indicativo")
+    return indic.get("Presente", {}).get("tú", "")
+
+
+def _vos_form_for_subjunctive(verb: dict) -> str:
+    """
+    Generate 'vos' present subjunctive.
+    Rules:
+      - Swaps vowel and adds accent to last syllable.
+      - -ar -> -és
+      - -er/-ir -> -ás
+    """
+    inf = (verb.get("infinitive") or "").lower()
+    
+    # Specific irregulars
+    if inf == "ir": return "vayas" # In some dialects, 'vayás' exists but 'vayas' is common
+    if inf == "saber": return "sepás"
+    if inf == "ser": return "seás"
+    if inf == "haber": return "hayas"
+    
+    if len(inf) < 3: return ""
+    stem = inf[:-2]
+    ending = inf[-2:]
+    
+    if ending == "ar": return f"{stem}és"
+    if ending in ["er", "ir"]: return f"{stem}ás"
+    
+    # Fallback
+    subj = _get_conj_map(verb, "Subjuntivo")
+    return subj.get("Presente", {}).get("tú", "")
 
 
 def _vos_affirmative_imperative(verb: dict) -> str:
@@ -236,16 +239,17 @@ def _vos_affirmative_imperative(verb: dict) -> str:
       -ir -> stem + í
     """
     inf = (verb.get("infinitive") or "").lower()
-    if len(inf) < 3:
-        return ""
+    
+    # Irregulars
+    if inf == "ir": return "andá" # 'ir' uses 'andá' in voseo
+    
+    if len(inf) < 3: return ""
     stem = inf[:-2]
     ending = inf[-2:]
-    if ending == "ar":
-        return f"{stem}á"
-    if ending == "er":
-        return f"{stem}é"
-    if ending == "ir":
-        return f"{stem}í"
+    
+    if ending == "ar": return f"{stem}á"
+    if ending == "er": return f"{stem}é"
+    if ending == "ir": return f"{stem}í"
     return ""
 
 
@@ -258,7 +262,7 @@ def _wide_table(title: str, col_titles: List[str], rows: List[List[str]]) -> Non
 def _build_rows_for_tenses(
     tenses: List[str],
     tense_to_forms: Dict[str, Dict[str, str]],
-    vos_present: Optional[str] = None,
+    vos_present_override: Optional[str] = None,
 ) -> List[List[str]]:
     rows: List[List[str]] = []
     for display_label, jehle_key in DISPLAY_PERSONS:
@@ -266,8 +270,9 @@ def _build_rows_for_tenses(
         for tense in tenses:
             forms = tense_to_forms.get(tense, {})
             if display_label == "vos":
-                if tense == "Presente" and vos_present is not None:
-                    row.append(vos_present)
+                # Apply override if we are in Present tense (Indicative or Subjunctive)
+                if (tense == "Presente" or tense == "Present") and vos_present_override is not None:
+                    row.append(vos_present_override)
                 else:
                     row.append(forms.get("tú", ""))
             else:
@@ -297,8 +302,8 @@ def render_conjugation_dashboard(verb: dict) -> None:
     # --- INDICATIVE (simple) ---
     indic = _get_conj_map(verb, "Indicativo")
     indic_tenses = ["Presente", "Pretérito", "Imperfecto", "Condicional", "Futuro"]
-    vos_pres = _vos_form_for_present(verb)
-    rows = _build_rows_for_tenses(indic_tenses, indic, vos_present=vos_pres)
+    vos_indic_pres = _vos_form_for_present(verb)
+    rows = _build_rows_for_tenses(indic_tenses, indic, vos_present_override=vos_indic_pres)
     _wide_table(
         f'Indicative of "{infinitive}"',
         ["Present", "Preterite", "Imperfect", "Conditional", "Future"],
@@ -308,7 +313,8 @@ def render_conjugation_dashboard(verb: dict) -> None:
     # --- SUBJUNCTIVE (simple) ---
     subj = _get_conj_map(verb, "Subjuntivo")
     subj_tenses = ["Presente", "Imperfecto", "Futuro"]
-    rows = _build_rows_for_tenses(subj_tenses, subj, vos_present=None)
+    vos_subj_pres = _vos_form_for_subjunctive(verb)
+    rows = _build_rows_for_tenses(subj_tenses, subj, vos_present_override=vos_subj_pres)
     _wide_table(
         f'Subjunctive of "{infinitive}"',
         ["Present", "Imperfect", "Future"],
@@ -331,9 +337,12 @@ def render_conjugation_dashboard(verb: dict) -> None:
     rows.append(["yo", "-", "-"])
     rows.append(["tú", aff_forms.get("tú", ""), neg_wrap(neg_forms.get("tú", ""))])
 
+    # Vos Imperative
+    # Affirmative: Generated helper
+    # Negative: "no" + Generated Subjunctive Helper
     vos_aff = _vos_affirmative_imperative(verb)
-    # best-effort: negative vos = "no" + subjunctive present tú (same as tú)
-    rows.append(["vos", vos_aff, neg_wrap(neg_forms.get("tú", ""))])
+    vos_neg_cmd = neg_wrap(vos_subj_pres) 
+    rows.append(["vos", vos_aff, vos_neg_cmd])
 
     rows.append(["Ud.", aff_forms.get("él/ella/usted", ""), neg_wrap(neg_forms.get("él/ella/usted", ""))])
     rows.append(["nosotros", aff_forms.get("nosotros/nosotras", ""), neg_wrap(neg_forms.get("nosotros/nosotras", ""))])
