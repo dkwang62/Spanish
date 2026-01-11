@@ -217,9 +217,11 @@ else:
     st.button("← Back to verb grid", on_click=back_to_grid, type="primary")
 
     tabs = st.tabs(["Conjugations", "Prompt generator"])
+
     with tabs[0]:
         from spanish_ui import render_conjugation_dashboard
-        render_conjugation_dashboard(v)
+        # Update this line to pass the new variables:
+        render_conjugation_dashboard(v, show_vos=show_vos, show_vosotros=show_vosotros)
 
     with tabs[1]:
         template_id = st.selectbox(
