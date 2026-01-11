@@ -1,31 +1,10 @@
-# spanish_state.py (v5)
-# Minimal state for grid -> detail UX
+# spanish_state.py (v5.1)
+# Minimal state for grid -> detail UX + Toast feedback
 
 from __future__ import annotations
 import streamlit as st
 
 PAGE_CONFIG = {"layout": "wide", "page_title": "Spanish Verb Lab", "page_icon": "🇪🇸"}
-
-def click_tile(infinitive: str) -> None:
-    """
-    Grid behavior:
-    - click once -> preview in sidebar (shows toast)
-    - click same again -> open detail
-    """
-    prev = st.session_state.get("preview")
-    
-    # If clicking the SAME tile that is already previewed -> Go to Detail
-    if prev == infinitive and st.session_state.get("mode") == "grid":
-        st.session_state["selected"] = infinitive
-        st.session_state["mode"] = "detail"
-    
-    # If clicking a DIFFERENT tile -> Set Preview
-    else:
-        st.session_state["preview"] = infinitive
-        st.session_state["selected"] = None
-        st.session_state["mode"] = "grid"
-        # NEW: Visual feedback
-        st.toast(f"Previewing **{infinitive}**. Click again to open details.", icon="👀")
 
 
 def ensure_state() -> None:
@@ -41,13 +20,19 @@ def click_tile(infinitive: str) -> None:
     - click same again -> open detail
     """
     prev = st.session_state.get("preview")
+    
+    # If clicking the SAME tile that is already previewed -> Go to Detail
     if prev == infinitive and st.session_state.get("mode") == "grid":
         st.session_state["selected"] = infinitive
         st.session_state["mode"] = "detail"
+    
+    # If clicking a DIFFERENT tile -> Set Preview
     else:
         st.session_state["preview"] = infinitive
         st.session_state["selected"] = None
         st.session_state["mode"] = "grid"
+        # Visual feedback
+        st.toast(f"Previewing **{infinitive}**. Click again to open details.", icon="👀")
 
 
 def back_to_grid() -> None:
