@@ -1,6 +1,6 @@
-# spanish_core.py (v5.1)
-# Core: Jehle DB + SUBTLEX rank file + pronominal overrides + prompts
-# Updated: Integrated "Spanish Radix" v1 JSON task specifications
+# spanish_core.py (v6.0)
+# Core: Jehle DB + SUBTLEX rank file + Pronominal JSON + Prompts
+# Updated: Loads verb seeds from external JSON to reduce code bloat
 
 from __future__ import annotations
 
@@ -10,43 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import streamlit as st
 
-# --- Seed sets: embedded "starter truth" ---
-REFLEXIVE_SEED = {
-    "despertar": "despertarse",
-    "duchar": "ducharse",
-    "bañar": "bañarse",
-    "lavar": "lavarse",
-    "afeitar": "afeitarse",
-    "cepillar": "cepillarse",
-    "peinar": "peinarse",
-    "maquillar": "maquillarse",
-    "vestir": "vestirse",
-    "acostar": "acostarse",
-    "levantar": "levantarse",
-    "sentar": "sentarse",
-    "mirar": "mirarse",
-    "pintar": "pintarse",
-    "secar": "secarse",
-}
-
-PRONOMINAL_SEED = {
-    "ir": "irse",
-    "dormir": "dormirse",
-    "poner": "ponerse",
-    "volver": "volverse",
-    "quedar": "quedarse",
-    "llevar": "llevarse",
-    "negar": "negarse",
-    "parecer": "parecerse",
-    "perder": "perderse",
-    "hallar": "hallarse",
-    "jugar": "jugarse",
-    "llamar": "llamarse",
-    "convertir": "convertirse",
-    "hacer": "hacerse",
-    "abonar": "abonarse",
-}
-
+VERBS_CAT_JSON = "verbs_categorized.json"
 
 @st.cache_data(show_spinner=False)
 def load_jehle_db(db_json_path: str, lookup_json_path: str) -> Tuple[List[dict], Dict[str, int]]:
@@ -57,17 +21,49 @@ def load_jehle_db(db_json_path: str, lookup_json_path: str) -> Tuple[List[dict],
     lookup = {k.lower(): int(v) for k, v in lookup.items()}
     return verbs, lookup
 
+@st.cache_data(show_spinner=False)
+def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """
+    Parses the categorized JSON into flat lookup dicts for 'Reflexive' and 'Pronominal' seeds.
+    Returns: (reflexive_flat, pronominal_flat)
+    """
+    p = Path(json_path)
+    if not p.exists():
+        return {}, {}
+        
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            
+        taxonomy = data.get("verb_taxonomy", {})
+        
+        # Helper to flatten categories
+        def _flatten_categories(root_key: str) -> Dict[str, str]:
+            flat_map = {}
+            cats = taxonomy.get(root_key, {}).get("categories", {})
+            for cat_name, content in cats.items():
+                for base, pron in content.get("verbs", {}).items():
+                    flat_map[base.lower()] = pron
+            return flat_map
+
+        reflexive_flat = _flatten_categories("reflexive")
+        pronominal_flat = _flatten_categories("pronominal")
+        
+        return reflexive_flat, pronominal_flat
+    
+    except Exception:
+        return {}, {}
+
 
 def _starter_overrides() -> Dict[str, dict]:
+    # Expanded overrides with more nuance, preserved as fallback logic
     return {
         "lavar": {"is_pronominal": True, "pronominal_infinitive": "lavarse", "se_type": "reflexive", "meaning_shift": "subject washes self"},
         "ir": {"is_pronominal": True, "pronominal_infinitive": "irse", "se_type": "pronominal", "meaning_shift": "departure / leaving"},
         "dormir": {"is_pronominal": True, "pronominal_infinitive": "dormirse", "se_type": "pronominal", "meaning_shift": "fall asleep"},
         "poner": {"is_pronominal": True, "pronominal_infinitive": "ponerse", "se_type": "pronominal", "meaning_shift": "become / put on (clothes)"},
         "quedar": {"is_pronominal": True, "pronominal_infinitive": "quedarse", "se_type": "pronominal", "meaning_shift": "remain / stay"},
-        "llevar": {"is_pronominal": True, "pronominal_infinitive": "llevarse", "se_type": "pronominal", "meaning_shift": "take away"},
         "volver": {"is_pronominal": True, "pronominal_infinitive": "volverse", "se_type": "pronominal", "meaning_shift": "become (permanent change)"},
-        "sentir": {"is_pronominal": True, "pronominal_infinitive": "sentirse", "se_type": "pronominal", "meaning_shift": "feel (emotional/physical state)"},
         "dar": {"is_pronominal": True, "pronominal_infinitive": "darse cuenta", "se_type": "pronominal_phrase", "meaning_shift": "realize"},
     }
 
@@ -118,7 +114,7 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
         return {}
 
 
-# --- UPDATED TEMPLATES (Spanish Radix v1) ---
+# --- TEMPLATES (Spanish Radix v1) ---
 TEMPLATES: Dict[str, dict] = {
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
@@ -128,7 +124,7 @@ TEMPLATES: Dict[str, dict] = {
 1. **Consistency:** Use the SAME subject and SAME non-verb vocabulary across all sentences in Sections A-D. Vary only the verb tense/mood.
 2. **Highlighting:** Highlight the CLITIC + VERB in **ALL CAPS** (e.g., "ME LAVO", "LAVARME").
 3. **Time/Tense Agreement:** Ensure time expressions (hoy, ayer, mañana) match the verb tense.
-4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers (querer que, dudar que, etc.).
+4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers.
 
 **Task:** REFLEXIVE_PLACEMENT_CORE
 **Target Verb:** {infinitive}
@@ -139,22 +135,14 @@ TEMPLATES: Dict[str, dict] = {
 Briefly explain clitic placement for: Conjugated verbs, Infinitives, Gerunds, Imperatives.
 
 **Step 2: Generate Sections (5 sentences each)**
-
-* **Section A: Indicative (Clitic before conjugated verb)**
-    * Vary tenses (Present, Preterite, Future, etc.).
-    * Format: Spanish (English)
-* **Section B: Infinitive (Attached clitic)**
-    * Structure: verb + infinitive w/ clitic.
-* **Section C: Gerund (Attached clitic)**
-    * Structure: estar + gerund w/ clitic.
-* **Section D: Imperatives**
-    * Mix of Positive (attached) and Negative (before verb).
-* **Section E: Subjunctive**
-    * Structure: [Trigger] + que + [Subject] + [Clitic] + [Subjunctive Verb].
-    * *Note: Subject must change from trigger to clause.*
+* **Section A:** Indicative (Clitic before conjugated verb)
+* **Section B:** Infinitive (Attached clitic)
+* **Section C:** Gerund (Attached clitic)
+* **Section D:** Imperatives (Positive attached, Negative before)
+* **Section E:** Subjunctive (Trigger + que + subject + clitic + verb)
 
 **Step 3: Drill**
-Provide 10 fill-in-the-blank sentences mixing all structures above. Provide an Answer Key at the end.
+Provide 10 fill-in-the-blank sentences mixing all structures above with an Answer Key.
 """
     },
     "PRONOMINAL_CONTRAST_PAIR": {
@@ -171,23 +159,20 @@ Provide 10 fill-in-the-blank sentences mixing all structures above. Provide an A
 **Meaning Shift:** {meaning_shift}
 
 **Step 1: Explanation**
-Explain the semantic contrast in 4–5 lines. Focus on the shift in meaning or nuance caused by the clitic.
+Explain the semantic contrast in 4–5 lines.
 
 **Step 2: Contrast Pairs (12 Total)**
-Generate 12 pairs of sentences. In each pair:
-* **Sentence A:** Uses the Base Verb ({infinitive}).
-* **Sentence B:** Uses the Pronominal Verb ({pronominal_infinitive}).
-* Both sentences should share context where possible to highlight the difference.
+* **Sentence A:** Base Verb ({infinitive}).
+* **Sentence B:** Pronominal Verb ({pronominal_infinitive}).
+* Both sentences should share context.
 
-**Distribution Requirements:**
+**Distribution:**
 * **6 Pairs:** Present Tense
-* **3 Pairs:** Past Tense (Preterite vs Imperfect where natural)
+* **3 Pairs:** Past Tense
 * **3 Pairs:** Future or "Ir a + inf"
 
 **Step 3: Decision Drill**
-Create 10 short scenarios/sentences with a blank.
-* The user must decide between the Base or Pronominal form.
-* Provide the Answer Key with a one-line explanation for each.
+Create 10 short scenarios where the user decides between Base or Pronominal forms.
 """
     },
 }
@@ -201,12 +186,14 @@ def get_verb_record(verbs: List[dict], lookup: Dict[str, int], infinitive: str) 
 def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     base = (verb.get("infinitive") or "").lower()
 
-    # 1) start from overrides if present
+    # 1) start from overrides
     o = overrides.get(base, {})
 
-    # 2) if no override, fall back to seeds
-    seed_pron = PRONOMINAL_SEED.get(base)
-    seed_refl = REFLEXIVE_SEED.get(base)
+    # 2) Load Seeds dynamically (Cached)
+    ref_seed, pron_seed = load_verb_seeds(VERBS_CAT_JSON)
+    
+    seed_pron = pron_seed.get(base)
+    seed_refl = ref_seed.get(base)
 
     is_pronominal = bool(o.get("is_pronominal", False))
     pronominal_inf = o.get("pronominal_infinitive")
@@ -218,12 +205,12 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             is_pronominal = True
             pronominal_inf = seed_pron
             se_type = "pronominal"
-            meaning_shift = "meaning shift (seed list)"
+            meaning_shift = "meaning shift (see category in json)"
         elif seed_refl:
             is_pronominal = True
             pronominal_inf = seed_refl
             se_type = "reflexive"
-            meaning_shift = "reflexive routine (seed list)"
+            meaning_shift = "reflexive (self-directed)"
 
     usage = {
         "is_pronominal": is_pronominal,
@@ -246,7 +233,6 @@ def render_prompt(template_id: str, verb: dict) -> str:
         return ""
     usage = verb.get("usage", {}) or {}
     
-    # Safe fallback for formatting keys
     infinitive = verb.get("infinitive", "VERB")
     pronominal = usage.get("pronominal_infinitive") or f"{infinitive}se"
     shift = usage.get("meaning_shift") or "Standard usage"
