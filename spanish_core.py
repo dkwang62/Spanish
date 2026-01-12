@@ -1,12 +1,12 @@
-# spanish_core.py (v6.0)
-# Core: Jehle DB + SUBTLEX rank file + Pronominal JSON + Prompts
-# Updated: Loads verb seeds from external JSON to reduce code bloat
+# spanish_core.py (v7.0)
+# Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
+# Updated: Integrated Accidental/Dative Se logic and templates
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 import streamlit as st
 
@@ -22,49 +22,72 @@ def load_jehle_db(db_json_path: str, lookup_json_path: str) -> Tuple[List[dict],
     return verbs, lookup
 
 @st.cache_data(show_spinner=False)
+def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
+    p = Path(path)
+    if not p.exists():
+        return {}
+    return json.loads(p.read_text(encoding="utf-8"))
+
+@st.cache_data(show_spinner=False)
 def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str]]:
     """
     Parses the categorized JSON into flat lookup dicts for 'Reflexive' and 'Pronominal' seeds.
     Returns: (reflexive_flat, pronominal_flat)
     """
-    p = Path(json_path)
-    if not p.exists():
-        return {}, {}
-        
-    try:
-        with open(p, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            
-        taxonomy = data.get("verb_taxonomy", {})
-        
-        # Helper to flatten categories
-        def _flatten_categories(root_key: str) -> Dict[str, str]:
-            flat_map = {}
-            cats = taxonomy.get(root_key, {}).get("categories", {})
-            for cat_name, content in cats.items():
-                for base, pron in content.get("verbs", {}).items():
-                    flat_map[base.lower()] = pron
-            return flat_map
-
-        reflexive_flat = _flatten_categories("reflexive")
-        pronominal_flat = _flatten_categories("pronominal")
-        
-        return reflexive_flat, pronominal_flat
+    data = load_se_catalog(json_path)
+    taxonomy = data.get("verb_taxonomy", {})
     
-    except Exception:
-        return {}, {}
+    def _flatten_categories(root_key: str) -> Dict[str, str]:
+        flat_map = {}
+        cats = taxonomy.get(root_key, {}).get("categories", {})
+        for cat_name, content in cats.items():
+            for base, pron in content.get("verbs", {}).items():
+                flat_map[base.lower()] = pron
+        return flat_map
+
+    reflexive_flat = _flatten_categories("reflexive")
+    pronominal_flat = _flatten_categories("pronominal")
+    
+    return reflexive_flat, pronominal_flat
+
+
+def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_catalog: dict) -> str | None:
+    """
+    Returns one of: 'reflexive', 'pronominal', 'accidental_dative', or None.
+    """
+    if not se_catalog or not pronominal_infinitive:
+        return None
+
+    pro = pronominal_infinitive.lower()
+    taxonomy = se_catalog.get("verb_taxonomy", {})
+
+    def _get_set(root_key):
+        s = set()
+        cats = taxonomy.get(root_key, {}).get("categories", {})
+        for _, content in cats.items():
+            # content.get("verbs") is a dict {base: pron}, we want the values (pron)
+            s.update([v.lower() for v in content.get("verbs", {}).values()])
+        return s
+
+    ref_all = _get_set("reflexive")
+    pro_all = _get_set("pronominal")
+    acc_all = _get_set("accidental_dative")
+
+    if pro in acc_all:
+        return "accidental_dative"
+    if pro in ref_all:
+        return "reflexive"
+    if pro in pro_all:
+        return "pronominal"
+    
+    return None
 
 
 def _starter_overrides() -> Dict[str, dict]:
-    # Expanded overrides with more nuance, preserved as fallback logic
     return {
         "lavar": {"is_pronominal": True, "pronominal_infinitive": "lavarse", "se_type": "reflexive", "meaning_shift": "subject washes self"},
         "ir": {"is_pronominal": True, "pronominal_infinitive": "irse", "se_type": "pronominal", "meaning_shift": "departure / leaving"},
-        "dormir": {"is_pronominal": True, "pronominal_infinitive": "dormirse", "se_type": "pronominal", "meaning_shift": "fall asleep"},
-        "poner": {"is_pronominal": True, "pronominal_infinitive": "ponerse", "se_type": "pronominal", "meaning_shift": "become / put on (clothes)"},
-        "quedar": {"is_pronominal": True, "pronominal_infinitive": "quedarse", "se_type": "pronominal", "meaning_shift": "remain / stay"},
-        "volver": {"is_pronominal": True, "pronominal_infinitive": "volverse", "se_type": "pronominal", "meaning_shift": "become (permanent change)"},
-        "dar": {"is_pronominal": True, "pronominal_infinitive": "darse cuenta", "se_type": "pronominal_phrase", "meaning_shift": "realize"},
+        "caer": {"is_pronominal": True, "pronominal_infinitive": "caerse", "se_type": "accidental_dative", "meaning_shift": "fall/drop accidentally"},
     }
 
 
@@ -114,7 +137,7 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
         return {}
 
 
-# --- TEMPLATES (Spanish Radix v1) ---
+# --- TEMPLATES ---
 TEMPLATES: Dict[str, dict] = {
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
@@ -175,6 +198,52 @@ Explain the semantic contrast in 4–5 lines.
 Create 10 short scenarios where the user decides between Base or Pronominal forms.
 """
     },
+    "ACCIDENTAL_DATIVE_SE_CORE": {
+        "name": "Accidental / dative se drill",
+        "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
+
+**Target pattern:** accidental/dative SE
+**Target verb:** {pronominal_infinitive}
+**Base verb:** {infinitive}
+**Level:** A2–B1
+
+**Step 1: Explain the pattern briefly**
+- Structure: SE + IO clitic (me/te/le/nos/os/les) + 3rd-person verb
+- Meaning: unintended event affecting someone, lack of control.
+
+**Step 2: Generate 20 short sentences (Spanish + English)**
+- Use only one IO clitic per sentence (rotate me/te/le/nos/os/les).
+- **Global Constraint:** Highlight SE + IO CLITIC + VERB in **ALL CAPS** (e.g. "SE ME CAYÓ").
+- Keep vocabulary simple and relevant to the verb's meaning ({meaning_shift}).
+
+**Step 3: Drill**
+- 10 fill-in-the-blank sentences (focus on the 'se + io' cluster).
+- Provide answer key.
+"""
+    },
+    "ACCIDENTAL_VS_INTENTIONAL_CONTRAST": {
+        "name": "Accidental (se me...) vs intentional",
+        "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
+
+**Teach the contrast:**
+A) Intentional action (Base verb: {infinitive})
+B) Accidental outcome (Accidental Se: {pronominal_infinitive})
+
+**Step 1: Explain the meaning difference**
+Explain in 4–5 simple lines how the syntax changes the meaning from "I did X" to "X happened to me".
+
+**Step 2: Provide 12 contrast pairs**
+- Share the object/context where possible.
+- **Sentence A:** Intentional (Active voice, normal subject).
+- **Sentence B:** Accidental (Se + IO construction).
+- Format: Spanish + English.
+- **Highlight the verb phrase in ALL CAPS**.
+
+**Step 3: Decision Drill**
+- 10 situations where the user must choose between the intentional or accidental construction.
+- Provide answers + one-line explanation.
+"""
+    }
 }
 
 
@@ -189,8 +258,9 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     # 1) start from overrides
     o = overrides.get(base, {})
 
-    # 2) Load Seeds dynamically (Cached)
+    # 2) Load Seeds dynamically
     ref_seed, pron_seed = load_verb_seeds(VERBS_CAT_JSON)
+    se_catalog = load_se_catalog(VERBS_CAT_JSON)
     
     seed_pron = pron_seed.get(base)
     seed_refl = ref_seed.get(base)
@@ -204,18 +274,24 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
         if seed_pron:
             is_pronominal = True
             pronominal_inf = seed_pron
-            se_type = "pronominal"
+            # Default meaning shift if not in overrides
             meaning_shift = "meaning shift (see category in json)"
         elif seed_refl:
             is_pronominal = True
             pronominal_inf = seed_refl
-            se_type = "reflexive"
             meaning_shift = "reflexive (self-directed)"
+    
+    # 3) CLASSIFY SE TYPE (Reflexive vs Pronominal vs Accidental)
+    # Use the computed pronominal_inf (either from override or seed)
+    if is_pronominal and pronominal_inf:
+        computed_type = classify_se_type(base, pronominal_inf, se_catalog)
+        if computed_type:
+            se_type = computed_type # Explicit classification overrides generic logic
 
     usage = {
         "is_pronominal": is_pronominal,
         "pronominal_infinitive": pronominal_inf,
-        "se_type": se_type,
+        "se_type": se_type, # Now holds 'reflexive', 'pronominal', or 'accidental_dative'
         "meaning_shift": meaning_shift,
         "notes": o.get("notes", "")
     }
