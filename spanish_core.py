@@ -1,6 +1,6 @@
-# spanish_core.py (v7.2)
+# spanish_core.py (v7.3)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: Restored ALL templates (Reflexive, Pronominal, Accidental, Standard)
+# Updated: REFLEXIVE_PLACEMENT_CORE prompt now enforces Semantic Validity
 
 from __future__ import annotations
 
@@ -138,16 +138,20 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
 
 # --- TEMPLATES ---
 TEMPLATES: Dict[str, dict] = {
-    # 1. From your uploaded file (Reflexive)
+    # 1. UPDATED REFLEXIVE PROMPT (Semantic Validity Check)
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
 
 **Global Constraints & Safety Rules:**
-1. **Consistency:** Use the SAME subject and SAME non-verb vocabulary across all sentences in Sections A-D. Vary only the verb tense/mood.
-2. **Highlighting:** Highlight the CLITIC + VERB in **ALL CAPS** (e.g., "ME LAVO", "LAVARME").
-3. **Time/Tense Agreement:** Ensure time expressions (hoy, ayer, mañana) match the verb tense.
-4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers (querer que, dudar que, etc.).
+1. **Consistency (A–D):** Use the SAME subject and SAME non-verb vocabulary across all sentences in Sections A–D. Vary ONLY the verb tense/mood and clitic placement rules required by the structure.
+2. **Highlighting:** Highlight the CLITIC + VERB in **ALL CAPS** in ALL sections (e.g., "SE HACE", "HACERSE", "HACIÉNDOSE", "HÁZTE", "NO TE HAGAS").
+3. **Time/Tense Agreement:** If you use time expressions (hoy/ayer/mañana), they must match the verb tense (present/past/future).
+4. **Subjunctive Licensing:** For Section E, use subjunctive ONLY with valid triggers (querer que, dudar que, es posible que, recomendar que, etc.).
+5. **Semantic Validity (Critical):** Avoid sentences that are morphologically correct but conceptually unnatural in Spanish. In particular:
+   - Do NOT pair time expressions with situations that imply an unrealistic instantaneous change (e.g., becoming an expert “ayer” without a plausible frame).
+   - If the target meaning typically implies a gradual process, prefer neutral time frames (hoy/mañana) or choose a complement/context that makes the change plausible.
+   - Ensure number/person agreement and conceptual naturalness for imperatives (e.g., avoid “nosotros” + singular predicate that sounds unnatural; if needed, choose vocabulary that works for all required persons).
 
 **Task:** REFLEXIVE_PLACEMENT_CORE
 **Target Verb:** {infinitive}
@@ -155,28 +159,41 @@ TEMPLATES: Dict[str, dict] = {
 **Meaning Shift:** {meaning_shift}
 
 **Step 1: Explain Rules**
-Briefly explain clitic placement for: Conjugated verbs, Infinitives, Gerunds, Imperatives.
+Briefly explain clitic placement for:
+- Conjugated verbs (finite): clitic BEFORE the verb.
+- Infinitives: clitic ATTACHED to the infinitive (and mention the alternative of pre-verbal placement only if structure permits).
+- Gerunds: clitic ATTACHED to the gerund (and mention the alternative of pre-verbal placement only if structure permits).
+- Imperatives: Positive = attached; Negative = before the verb.
 
 **Step 2: Generate Sections (5 sentences each)**
 
 * **Section A: Indicative (Clitic before conjugated verb)**
-    * Vary tenses (Present, Preterite, Future, etc.).
-    * Format: Spanish (English)
+  - Vary tenses (Present, Preterite, Future, etc.).
+  - Format: Spanish (English)
+
 * **Section B: Infinitive (Attached clitic)**
-    * Structure: verb + infinitive w/ clitic.
+  - Structure: conjugated verb + infinitive WITH clitic attached.
+
 * **Section C: Gerund (Attached clitic)**
-    * Structure: estar + gerund w/ clitic.
+  - Structure: estar + gerund WITH clitic attached.
+
 * **Section D: Imperatives**
-    * Mix of Positive (attached) and Negative (before verb).
+  - Mix Positive (attached) and Negative (clitic before verb).
+  - Keep vocabulary consistent; ensure agreement and naturalness.
+
 * **Section E: Subjunctive**
-    * Structure: [Trigger] + que + [Subject] + [Clitic] + [Subjunctive Verb].
-    * *Note: Subject must change from trigger to clause.*
+  - Structure: [Trigger] + que + [Different Subject] + [Clitic] + [Subjunctive Verb].
+  - Note: Subject must change from trigger to clause.
+  - Only use licensed subjunctive triggers.
 
 **Step 3: Drill**
-Provide 10 fill-in-the-blank sentences mixing all structures above. Provide an Answer Key at the end.
+Provide 10 fill-in-the-blank sentences mixing all structures above + Answer Key.
+- Apply the SAME highlighting rule.
+- Strictly avoid semantically unnatural items (even if grammatically correct).
+- Do not include “edge-case” drills that require extra context to sound natural.
 """
     },
-    # 2. From your uploaded file (Pronominal)
+    # 2. Pronominal (Contrast)
     "PRONOMINAL_CONTRAST_PAIR": {
         "name": "Base vs pronominal contrast",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -210,7 +227,7 @@ Create 10 short scenarios/sentences with a blank.
 * Provide the Answer Key with a one-line explanation for each.
 """
     },
-    # 3. Restored Verbatim (Accidental Core)
+    # 3. Accidental Core
     "ACCIDENTAL_DATIVE_SE_CORE": {
         "name": "Accidental / dative se drill",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -234,7 +251,7 @@ Create 10 short scenarios/sentences with a blank.
 - Provide answer key.
 """
     },
-    # 4. Restored Verbatim (Accidental Contrast)
+    # 4. Accidental Contrast
     "ACCIDENTAL_VS_INTENTIONAL_CONTRAST": {
         "name": "Accidental (se me...) vs intentional",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -258,7 +275,7 @@ Explain in 4–5 simple lines how the syntax changes the meaning from "I did X" 
 - Provide answers + one-line explanation.
 """
     },
-    # 5. Standard Fallback (to fix "No templates available" error)
+    # 5. Standard Fallback
     "STANDARD_VERB_DRILL": {
         "name": "Standard conjugation & usage",
         "prompt": """You are the 'Spanish Radix' engine (v1).
