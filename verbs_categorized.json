@@ -20,7 +20,8 @@
             "cepillar": "cepillarse",
             "arreglar": "arreglarse",
             "preparar": "prepararse",
-            "pintar": "pintarse"
+            "pintar": "pintarse",
+            "broncear": "broncearse"
           }
         },
         "movement_position": {
@@ -33,7 +34,11 @@
             "acercar": "acercarse",
             "alejar": "alejarse",
             "esconder": "esconderse",
-            "mirar": "mirarse"
+            "mirar": "mirarse",
+            "detener": "detenerse",
+            "mover": "moverse",
+            "zambullir": "zambullirse",
+            "echar": "echarse"
           }
         },
         "mental_emotional": {
@@ -45,7 +50,18 @@
             "motivar": "motivarse",
             "tranquilizar": "tranquilizarse",
             "acostumbrar": "acostumbrarse",
-            "adaptar": "adaptarse"
+            "adaptar": "adaptarse",
+            "aburrir": "aburrirse",
+            "divertir": "divertirse",
+            "preocupar": "preocuparse",
+            "alegrar": "alegrarse",
+            "asustar": "asustarse",
+            "enamorar": "enamorarse",
+            "enfadar": "enfadarse",
+            "enojar": "enojarse",
+            "entusiasmar": "entusiasmarse",
+            "sentir": "sentirse",
+            "cansar": "cansarse"
           }
         }
       }
@@ -60,7 +76,51 @@
             "volver": "volverse",
             "quedar": "quedarse",
             "convertir": "convertirse",
-            "transformar": "transformarse"
+            "transformar": "transformarse",
+            "calentar": "calentarse",
+            "emborrachar": "emborracharse",
+            "enfermar": "enfermarse",
+            "enflaquecer": "enflaquecerse",
+            "enriquecer": "enriquecerse",
+            "envejecer": "envejecerse",
+            "criar": "criarse",
+            "desarrollar": "desarrollarse"
+          }
+        },
+        "social_life_events": {
+          "verbs": {
+            "casar": "casarse",
+            "divorciar": "divorciarse",
+            "graduar": "graduarse",
+            "matricular": "matricularse",
+            "comunicar": "comunicarse",
+            "juntar": "juntarse"
+          }
+        },
+        "mental_process": {
+          "verbs": {
+            "acordar": "acordarse",
+            "enterar": "enterarse",
+            "equivocar": "equivocarse",
+            "olvidar": "olvidarse",
+            "preguntar": "preguntarse",
+            "fijar": "fijarse"
+          }
+        },
+        "attitude_behavior": {
+          "verbs": {
+            "arrepentir": "arrepentirse",
+            "burlar": "burlarse",
+            "jactar": "jactarse",
+            "quejar": "quejarse",
+            "atrever": "atreverse",
+            "negar": "negarse",
+            "decidir": "decidirse",
+            "dedicar": "dedicarse",
+            "oponer": "oponerse",
+            "empeñar": "empeñarse",
+            "esforzar": "esforzarse",
+            "arriesgar": "arriesgarse"
           }
         },
         "departure": {
@@ -70,19 +130,8 @@
             "salir": "salirse",
             "escapar": "escaparse",
             "largar": "largarse",
-            "retirar": "retirarse"
-          }
-        },
-        "personal_involvement": {
-          "verbs": {
-            "llevar": "llevarse",
-            "comer": "comerse",
-            "beber": "beberse",
-            "saber": "saberse",
-            "creer": "creerse",
-            "jugar": "jugarse",
-            "ganar": "ganarse",
-            "abonar": "abonarse"
+            "retirar": "retirarse",
+            "mudar": "mudarse"
           }
         },
         "identity_description": {
@@ -94,14 +143,17 @@
             "encontrar": "encontrarse"
           }
         },
-        "commitment_resistance": {
+        "personal_involvement": {
           "verbs": {
-            "negar": "negarse",
-            "atrever": "atreverse",
-            "decidir": "decidirse",
-            "empeñar": "empeñarse",
-            "esforzar": "esforzarse",
-            "arriesgar": "arriesgarse"
+            "llevar": "llevarse",
+            "comer": "comerse",
+            "beber": "beberse",
+            "saber": "saberse",
+            "creer": "creerse",
+            "jugar": "jugarse",
+            "ganar": "ganarse",
+            "abonar": "abonarse",
+            "callar": "callarse"
           }
         }
       }
