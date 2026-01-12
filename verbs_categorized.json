@@ -1,0 +1,129 @@
+{
+  "verb_taxonomy": {
+    "reflexive": {
+      "definition": "The subject performs the action on themselves (self-directed). Meaning stays close to the base verb.",
+      "categories": {
+        "daily_routine": {
+          "verbs": {
+            "despertar": "despertarse",
+            "levantar": "levantarse",
+            "acostar": "acostarse",
+            "lavar": "lavarse",
+            "duchar": "ducharse",
+            "bañar": "bañarse",
+            "vestir": "vestirse",
+            "desvestir": "desvestirse",
+            "afeitar": "afeitarse",
+            "peinar": "peinarse",
+            "maquillar": "maquillarse",
+            "secar": "secarse",
+            "cepillar": "cepillarse",
+            "arreglar": "arreglarse",
+            "preparar": "prepararse",
+            "pintar": "pintarse"
+          }
+        },
+        "movement_position": {
+          "verbs": {
+            "sentar": "sentarse",
+            "parar": "pararse",
+            "tumbar": "tumbarse",
+            "agachar": "agacharse",
+            "inclinar": "inclinarse",
+            "acercar": "acercarse",
+            "alejar": "alejarse",
+            "esconder": "esconderse",
+            "mirar": "mirarse"
+          }
+        },
+        "mental_emotional": {
+          "verbs": {
+            "calmar": "calmarse",
+            "concentrar": "concentrarse",
+            "relajar": "relajarse",
+            "animar": "animarse",
+            "motivar": "motivarse",
+            "tranquilizar": "tranquilizarse",
+            "acostumbrar": "acostumbrarse",
+            "adaptar": "adaptarse"
+          }
+        }
+      }
+    },
+    "pronominal": {
+      "definition": "The 'se' form behaves like a different lexical verb, marking a meaning shift, departure, or change of state.",
+      "categories": {
+        "change_of_state": {
+          "verbs": {
+            "hacer": "hacerse",
+            "poner": "ponerse",
+            "volver": "volverse",
+            "quedar": "quedarse",
+            "convertir": "convertirse",
+            "transformar": "transformarse"
+          }
+        },
+        "departure": {
+          "verbs": {
+            "ir": "irse",
+            "marchar": "marcharse",
+            "salir": "salirse",
+            "escapar": "escaparse",
+            "largar": "largarse",
+            "retirar": "retirarse"
+          }
+        },
+        "loss_or_accidental": {
+          "verbs": {
+            "perder": "perderse",
+            "olvidar": "olvidarse",
+            "caer": "caerse",
+            "romper": "romperse",
+            "quemar": "quemarse"
+          }
+        },
+        "personal_involvement": {
+          "verbs": {
+            "llevar": "llevarse",
+            "comer": "comerse",
+            "beber": "beberse",
+            "saber": "saberse",
+            "creer": "creerse",
+            "jugar": "jugarse",
+            "ganar": "ganarse",
+            "abonar": "abonarse"
+          }
+        },
+        "identity_description": {
+          "verbs": {
+            "llamar": "llamarse",
+            "apellidar": "apellidarse",
+            "parecer": "parecerse",
+            "hallar": "hallarse",
+            "encontrar": "encontrarse"
+          }
+        },
+        "commitment_resistance": {
+          "verbs": {
+            "negar": "negarse",
+            "atrever": "atreverse",
+            "decidir": "decidirse",
+            "empeñar": "empeñarse",
+            "esforzar": "esforzarse",
+            "arriesgar": "arriesgarse"
+          }
+        }
+      }
+    }
+  },
+  "educational_content": {
+    "diagnostic_rule": {
+      "text": "If you can paraphrase 'se' as 'a sí mismo/a' (to oneself) without changing the meaning, it is usually REFLEXIVE. If not, it is PRONOMINAL.",
+      "examples": [
+        { "spanish": "Me lavo", "paraphrase": "Lavo a mí mismo", "result": "Reflexive" },
+        { "spanish": "Me voy", "paraphrase": "Voy a mí mismo", "result": "Invalid (Meaning shift to 'leave')" }
+      ]
+    },
+    "nuance_note": "Some verbs can be reflexive in one context and pronominal in another. Classification is a learning aid, not a rigid taxonomy."
+  }
+}
