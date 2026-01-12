@@ -1,6 +1,6 @@
-# spanish_core.py (v7.3)
+# spanish_core.py (v8.0)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: REFLEXIVE_PLACEMENT_CORE prompt now enforces Semantic Validity
+# Updated: Added Psychological/Experiencer verb support (gustar-like)
 
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 @st.cache_data(show_spinner=False)
-def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str]]:
+def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], List[str]]:
     """
-    Parses the categorized JSON into flat lookup dicts for 'Reflexive' and 'Pronominal' seeds.
-    Returns: (reflexive_flat, pronominal_flat)
+    Parses the categorized JSON into lookup structures.
+    Returns: (reflexive_flat, pronominal_flat, experiencer_list)
     """
     data = load_se_catalog(json_path)
     taxonomy = data.get("verb_taxonomy", {})
@@ -48,29 +48,49 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
     reflexive_flat = _flatten_categories("reflexive")
     pronominal_flat = _flatten_categories("pronominal")
     
-    return reflexive_flat, pronominal_flat
+    # Experiencer list (just a set of infinitives, e.g., 'gustar', 'doler')
+    experiencer_set = set()
+    exp_cats = taxonomy.get("experiencer", {}).get("categories", {})
+    for _, content in exp_cats.items():
+        for base in content.get("verbs", {}).keys():
+            experiencer_set.add(base.lower())
+    
+    return reflexive_flat, pronominal_flat, list(experiencer_set)
 
 
 def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_catalog: dict) -> str | None:
     """
-    Returns one of: 'reflexive', 'pronominal', 'accidental_dative', or None.
+    Returns one of: 'reflexive', 'pronominal', 'accidental_dative', 'experiencer', or None.
     """
-    if not se_catalog or not pronominal_infinitive:
-        return None
-
-    pro = pronominal_infinitive.lower()
+    inf = infinitive.lower()
+    
+    # 1. Check Experiencer (Base Infinitive Lookup)
+    # Because 'gustar' is the dictionary entry, not 'gustarse' in this context.
     taxonomy = se_catalog.get("verb_taxonomy", {})
-
-    def _get_set(root_key):
+    
+    def _get_set(root_key, use_values=True):
         s = set()
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for _, content in cats.items():
-            s.update([v.lower() for v in content.get("verbs", {}).values()])
+            # For reflexive/pronominal, we often look at the 'values' (pron form).
+            # For experiencer, we look at the 'keys' (base form).
+            target_dict = content.get("verbs", {})
+            iterator = target_dict.values() if use_values else target_dict.keys()
+            s.update([v.lower() for v in iterator])
         return s
 
-    ref_all = _get_set("reflexive")
-    pro_all = _get_set("pronominal")
-    acc_all = _get_set("accidental_dative")
+    exp_all = _get_set("experiencer", use_values=False) # Check base keys: gustar, doler
+    if inf in exp_all:
+        return "experiencer"
+
+    # 2. Check Pronominal forms (if provided)
+    if not pronominal_infinitive:
+        return None
+
+    pro = pronominal_infinitive.lower()
+    acc_all = _get_set("accidental_dative", use_values=True)
+    ref_all = _get_set("reflexive", use_values=True)
+    pro_all = _get_set("pronominal", use_values=True)
 
     if pro in acc_all:
         return "accidental_dative"
@@ -87,6 +107,7 @@ def _starter_overrides() -> Dict[str, dict]:
         "lavar": {"is_pronominal": True, "pronominal_infinitive": "lavarse", "se_type": "reflexive", "meaning_shift": "subject washes self"},
         "ir": {"is_pronominal": True, "pronominal_infinitive": "irse", "se_type": "pronominal", "meaning_shift": "departure / leaving"},
         "caer": {"is_pronominal": True, "pronominal_infinitive": "caerse", "se_type": "accidental_dative", "meaning_shift": "fall/drop accidentally"},
+        "gustar": {"is_pronominal": False, "se_type": "experiencer", "meaning_shift": "pleases (inverted subject)"}
     }
 
 
@@ -138,7 +159,7 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
 
 # --- TEMPLATES ---
 TEMPLATES: Dict[str, dict] = {
-    # 1. UPDATED REFLEXIVE PROMPT (Semantic Validity Check)
+    # 1. Reflexive (Updated w/ Semantic Check)
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -193,7 +214,7 @@ Provide 10 fill-in-the-blank sentences mixing all structures above + Answer Key.
 - Do not include “edge-case” drills that require extra context to sound natural.
 """
     },
-    # 2. Pronominal (Contrast)
+    # 2. Pronominal
     "PRONOMINAL_CONTRAST_PAIR": {
         "name": "Base vs pronominal contrast",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -275,7 +296,39 @@ Explain in 4–5 simple lines how the syntax changes the meaning from "I did X" 
 - Provide answers + one-line explanation.
 """
     },
-    # 5. Standard Fallback
+    # 5. NEW: Psychological / Experiencer Drill
+    "GUSTAR_EXPERIENCER_DRILL": {
+        "name": "Gustar-like (Experiencer) drill",
+        "prompt": """You are the 'Spanish Radix' engine (v1).
+
+**Target Pattern:** Psychological/Experiencer Verbs (Verbs like Gustar)
+**Target Verb:** {infinitive}
+**Pattern:** Indirect Object (Experiencer) + Verb (3rd Person) + Subject (Theme).
+
+**Step 1: Explanation**
+Explain that in this structure, the "subject" (grammatically) is what pleases/bores/hurts, and the person feeling it is marked by an Indirect Object pronoun (me/te/le/nos/os/les).
+
+**Step 2: Conjugation Table (Specific)**
+Show a grid for the PRESENT tense of {infinitive} in this structure:
+- A mí me ...
+- A ti te ...
+- A él/ella le ...
+- A nosotros nos ...
+- A vosotros os ...
+- A ellos les ...
+*(Include singular and plural verb forms: e.g., 'gusta' vs 'gustan')*
+
+**Step 3: Sentence Generation (12 sentences)**
+Generate sentences mixing different tenses (Present, Preterite, Imperfect, Conditional).
+- Rotate the experiencer (Me, Te, Le, Nos, Les).
+- **Constraint:** Highlight the IO PRONOUN + VERB in **ALL CAPS** (e.g., "ME GUSTA", "LE DOLÍA").
+- Include questions (e.g., "¿Te interesa...?").
+
+**Step 4: Drill**
+Provide 10 fill-in-the-blank items where the user must supply the correct Indirect Object Pronoun and/or the correct Verb Form based on the subject.
+"""
+    },
+    # 6. Standard Fallback
     "STANDARD_VERB_DRILL": {
         "name": "Standard conjugation & usage",
         "prompt": """You are the 'Spanish Radix' engine (v1).
@@ -316,7 +369,7 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     o = overrides.get(base, {})
 
     # 2) Load Seeds dynamically
-    ref_seed, pron_seed = load_verb_seeds(VERBS_CAT_JSON)
+    ref_seed, pron_seed, exp_seed_list = load_verb_seeds(VERBS_CAT_JSON)
     se_catalog = load_se_catalog(VERBS_CAT_JSON)
     
     seed_pron = pron_seed.get(base)
@@ -338,17 +391,21 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             pronominal_inf = seed_refl
             meaning_shift = "reflexive (self-directed)"
     
-    # 3) CLASSIFY SE TYPE (Reflexive vs Pronominal vs Accidental)
-    # Use the computed pronominal_inf (either from override or seed)
-    if is_pronominal and pronominal_inf:
-        computed_type = classify_se_type(base, pronominal_inf, se_catalog)
-        if computed_type:
-            se_type = computed_type # Explicit classification overrides generic logic
+    # 3) CLASSIFY SE TYPE (Reflexive vs Pronominal vs Accidental vs Experiencer)
+    
+    # A) Check if it is explicitly an Experiencer verb (base form)
+    # This overrides regular classification because 'gustar' is not pronominal
+    computed_type = classify_se_type(base, pronominal_inf, se_catalog)
+    
+    if computed_type:
+        se_type = computed_type 
+        if se_type == "experiencer":
+            meaning_shift = "Psychological/Experiencer (IO construction)"
 
     usage = {
         "is_pronominal": is_pronominal,
         "pronominal_infinitive": pronominal_inf,
-        "se_type": se_type, # Now holds 'reflexive', 'pronominal', or 'accidental_dative'
+        "se_type": se_type, 
         "meaning_shift": meaning_shift,
         "notes": o.get("notes", "")
     }
