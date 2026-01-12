@@ -1,7 +1,7 @@
-# app.py (v6.6)
+# app.py (v7.0)
 # Updates:
-# 1. Sort options changed to: "Alphabetical", "ar/er/ir/se", "Popularity".
-# 2. Default sort is now "Alphabetical".
+# 1. Template filtering based on se_category (Reflexive vs Pronominal vs Accidental)
+# 2. Uses updated spanish_core logic
 
 import streamlit as st
 
@@ -143,12 +143,10 @@ if mode == "grid":
         
         base = list(dict.fromkeys(base))
 
-        # "Popularity" sorts by Rank
         if sort_option == "Popularity":
             base.sort(key=lambda inf: (_rank(inf), inf))
             return base
         
-        # "Alphabetical" and "ar/er/ir/se" (group basis) sort A-Z
         return sorted(base, key=lambda x: x.lower())
 
     base_list = build_list()
@@ -160,8 +158,6 @@ if mode == "grid":
             cols = st.columns(per_row)
             for j, inf in enumerate(row):
                 label = f"{inf}"
-                
-                # Check active state
                 is_preview = (st.session_state.get("preview") == inf)
                 btn_type = "primary" if is_preview else "secondary"
                 
@@ -175,14 +171,9 @@ if mode == "grid":
                 )
 
     if sort_option == "ar/er/ir/se":
-        # Grouped View (A-Z within groups)
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
-        
-        # Match both "ir" and "ír"
         ir = sorted([inf for inf in base_list if inf.lower().endswith(("ir", "ír"))], key=lambda x: x.lower())
-        
-        # Exclude all endings
         other = sorted([inf for inf in base_list if not inf.lower().endswith(("ar", "er", "ir", "ír"))], key=lambda x: x.lower())
 
         st.subheader("-ar verbs")
@@ -200,7 +191,6 @@ if mode == "grid":
             render_tiles(other)
 
     else:
-        # "Alphabetical" or "Popularity" (Flat list)
         render_tiles(base_list, max_items=600)
 
 else:
@@ -215,6 +205,10 @@ else:
         st.stop()
 
     v = merge_usage(v, overrides)
+    
+    # NEW: Determine SE CATEGORY from usage
+    usage_data = v.get("usage", {})
+    se_cat = usage_data.get("se_type")  # 'reflexive', 'pronominal', 'accidental_dative', or None
 
     tabs = st.tabs(["Conjugations", "Prompt generator"])
     with tabs[0]:
@@ -222,12 +216,40 @@ else:
         render_conjugation_dashboard(v, show_vos=show_vos, show_vosotros=show_vosotros)
 
     with tabs[1]:
-        template_id = st.selectbox(
-            "Template",
-            options=list(TEMPLATES.keys()),
-            format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
-        )
-        prompt = render_prompt(template_id, v)
+        # --- AUTO-ADAPTIVE TEMPLATE FILTERING ---
+        # Logic: 
+        # 1. If Accidental -> Show Accidental templates + General templates
+        # 2. If Reflexive -> Show Reflexive templates + General templates
+        # 3. If Pronominal -> Show Pronominal templates + General templates
+        # 4. If None -> Show only General (if any existed, but here we filter strictly)
+        
+        def template_allowed(tid: str) -> bool:
+            # Accidental templates
+            if tid.startswith("ACCIDENTAL_"):
+                return se_cat == "accidental_dative"
+            
+            # Reflexive templates
+            if tid.startswith("REFLEXIVE_"):
+                return se_cat == "reflexive"
+            
+            # Pronominal templates
+            if tid.startswith("PRONOMINAL_"):
+                return se_cat == "pronominal"
+            
+            return True # Allow other future templates
 
-        st.subheader("Generated AI Prompt")
-        st.code(prompt, language="text")
+        available_templates = [k for k in TEMPLATES.keys() if template_allowed(k)]
+        
+        # Fallback if list is empty (e.g. non-pronominal verb selected)
+        if not available_templates:
+            st.info("No specific pronominal templates available for this verb type.")
+        else:
+            template_id = st.selectbox(
+                "Template",
+                options=available_templates,
+                format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
+            )
+            prompt = render_prompt(template_id, v)
+
+            st.subheader("Generated AI Prompt")
+            st.code(prompt, language="text")
