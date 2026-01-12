@@ -1,6 +1,6 @@
-# spanish_core.py (v7.0)
+# spanish_core.py (v7.1)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: Integrated Accidental/Dative Se logic and templates
+# Updated: Added STANDARD_VERB_DRILL as a fallback for non-pronominal verbs
 
 from __future__ import annotations
 
@@ -65,7 +65,6 @@ def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_cata
         s = set()
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for _, content in cats.items():
-            # content.get("verbs") is a dict {base: pron}, we want the values (pron)
             s.update([v.lower() for v in content.get("verbs", {}).values()])
         return s
 
@@ -243,6 +242,32 @@ Explain in 4–5 simple lines how the syntax changes the meaning from "I did X" 
 - 10 situations where the user must choose between the intentional or accidental construction.
 - Provide answers + one-line explanation.
 """
+    },
+    # NEW: Fallback for all verbs
+    "STANDARD_VERB_DRILL": {
+        "name": "Standard conjugation & usage",
+        "prompt": """You are the 'Spanish Radix' engine (v1).
+
+**Global Constraints:**
+1. **Highlighting:** Highlight the target VERB in **ALL CAPS**.
+2. **Accuracy:** Ensure strict tense agreement and correct conjugations.
+
+**Task:** STANDARD_VERB_DRILL
+**Target Verb:** {infinitive}
+**Meaning:** {meaning_shift}
+
+**Step 1: Conjugation Overview**
+List the Present, Preterite, and Imperfect forms for 'Yo', 'Tú', and 'Nosotros'.
+Mark any irregularities clearly.
+
+**Step 2: Sentence Generation (10 total)**
+Generate 10 sentences across different tenses (Indicative & Subjunctive).
+* Contextualize the meaning clearly.
+* Spanish + English translation.
+
+**Step 3: Drill**
+Provide 5 fill-in-the-blank exercises focusing on correct conjugation choice.
+"""
     }
 }
 
@@ -282,16 +307,15 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             meaning_shift = "reflexive (self-directed)"
     
     # 3) CLASSIFY SE TYPE (Reflexive vs Pronominal vs Accidental)
-    # Use the computed pronominal_inf (either from override or seed)
     if is_pronominal and pronominal_inf:
         computed_type = classify_se_type(base, pronominal_inf, se_catalog)
         if computed_type:
-            se_type = computed_type # Explicit classification overrides generic logic
+            se_type = computed_type 
 
     usage = {
         "is_pronominal": is_pronominal,
         "pronominal_infinitive": pronominal_inf,
-        "se_type": se_type, # Now holds 'reflexive', 'pronominal', or 'accidental_dative'
+        "se_type": se_type, 
         "meaning_shift": meaning_shift,
         "notes": o.get("notes", "")
     }
