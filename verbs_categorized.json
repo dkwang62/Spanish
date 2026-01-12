@@ -1,7 +1,7 @@
 {
   "verb_taxonomy": {
     "reflexive": {
-      "definition": "The subject performs the action on themselves (self-directed). Meaning stays close to the base verb.",
+      "definition": "The subject performs the action on themselves (self-directed).",
       "categories": {
         "daily_routine": {
           "verbs": {
@@ -51,7 +51,7 @@
       }
     },
     "pronominal": {
-      "definition": "The 'se' form behaves like a different lexical verb, marking a meaning shift, departure, or change of state.",
+      "definition": "The 'se' form behaves like a different lexical verb (meaning shift).",
       "categories": {
         "change_of_state": {
           "verbs": {
@@ -107,12 +107,8 @@
       }
     },
     "accidental_dative": {
-      "definition": "Accidental/dative se: 'se + indirect object clitic' highlights an unintended event affecting someone.",
+      "definition": "Unintended event affecting someone (se me cayó).",
       "required_clitics": ["me", "te", "le", "nos", "os", "les"],
-      "core_patterns": [
-        "SE + IO_CLITIC + 3rd-person verb",
-        "SE + IO_CLITIC + (direct object) + verb"
-      ],
       "categories": {
         "dropping_falling": {
           "verbs": { "caer": "caerse" }
@@ -143,17 +139,82 @@
           }
         }
       }
+    },
+    "experiencer": {
+      "definition": "Verbs using the indirect object structure: IO (Experiencer) + Verb + Subject.",
+      "required_clitics": ["me", "te", "le", "nos", "os", "les"],
+      "categories": {
+        "liking_preference": {
+          "verbs": {
+            "gustar": "gustar",
+            "encantar": "encantar",
+            "agradar": "agradar",
+            "desagradar": "desagradar",
+            "fascinar": "fascinar",
+            "atraer": "atraer",
+            "cautivar": "cautivar",
+            "interesar": "interesar",
+            "molar": "molar",
+            "chiflar": "chiflar"
+          }
+        },
+        "annoyance_irritation": {
+          "verbs": {
+            "molestar": "molestar",
+            "irritar": "irritar",
+            "fastidiar": "fastidiar",
+            "incomodar": "incomodar",
+            "disgustar": "disgustar",
+            "ofender": "ofender",
+            "aburrir": "aburrir",
+            "cansar": "cansar"
+          }
+        },
+        "emotional_impact": {
+          "verbs": {
+            "sorprender": "sorprender",
+            "asombrar": "asombrar",
+            "impresionar": "impresionar",
+            "asustar": "asustar",
+            "preocupar": "preocupar",
+            "alegrar": "alegrar",
+            "entristecer": "entristecer",
+            "divertir": "divertir",
+            "extrañar": "extrañar"
+          }
+        },
+        "physical_sensation": {
+          "verbs": {
+            "doler": "doler",
+            "picar": "picar",
+            "escocer": "escocer"
+          }
+        },
+        "importance_convenience": {
+          "verbs": {
+            "importar": "importar",
+            "convenir": "convenir",
+            "servir": "servir",
+            "valer": "valer",
+            "bastar": "bastar",
+            "sobrar": "sobrar",
+            "faltar": "faltar",
+            "parecer": "parecer",
+            "costar": "costar",
+            "tocar": "tocar"
+          }
+        }
+      }
     }
   },
   "educational_content": {
     "diagnostic_rule": {
-      "text": "If you can paraphrase 'se' as 'a sí mismo/a' (to oneself) without changing the meaning, it is usually REFLEXIVE. If not, it is PRONOMINAL. If it implies an accident affecting someone (se me...), it is ACCIDENTAL/DATIVE.",
+      "text": "Check the structure: Is the person the SUBJECT (doing it) or the EXPERIENCER (feeling it)? If 'it implies X happens to me/pleases me' (me gusta, me duele), it is an EXPERIENCER verb.",
       "examples": [
-        { "spanish": "Me lavo", "paraphrase": "Lavo a mí mismo", "result": "Reflexive" },
-        { "spanish": "Me voy", "paraphrase": "Voy a mí mismo", "result": "Invalid (Meaning shift to 'leave')" },
-        { "spanish": "Se me cayó", "paraphrase": "Dropped accidentally", "result": "Accidental Dative" }
+        { "spanish": "Me lavo", "type": "Reflexive (I wash myself)" },
+        { "spanish": "Me gusta", "type": "Experiencer (It pleases me)" },
+        { "spanish": "Se me cayó", "type": "Accidental (It dropped on me)" }
       ]
-    },
-    "nuance_note": "Some verbs can be reflexive in one context and pronominal in another. Classification is a learning aid, not a rigid taxonomy."
+    }
   }
 }
