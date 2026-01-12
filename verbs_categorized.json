@@ -73,15 +73,6 @@
             "retirar": "retirarse"
           }
         },
-        "loss_or_accidental": {
-          "verbs": {
-            "perder": "perderse",
-            "olvidar": "olvidarse",
-            "caer": "caerse",
-            "romper": "romperse",
-            "quemar": "quemarse"
-          }
-        },
         "personal_involvement": {
           "verbs": {
             "llevar": "llevarse",
@@ -114,14 +105,53 @@
           }
         }
       }
+    },
+    "accidental_dative": {
+      "definition": "Accidental/dative se: 'se + indirect object clitic' highlights an unintended event affecting someone.",
+      "required_clitics": ["me", "te", "le", "nos", "os", "les"],
+      "core_patterns": [
+        "SE + IO_CLITIC + 3rd-person verb",
+        "SE + IO_CLITIC + (direct object) + verb"
+      ],
+      "categories": {
+        "dropping_falling": {
+          "verbs": { "caer": "caerse" }
+        },
+        "forgetting": {
+          "verbs": { "olvidar": "olvidarse" }
+        },
+        "losing": {
+          "verbs": { "perder": "perderse", "extraviar": "extraviarse" }
+        },
+        "breaking_damage": {
+          "verbs": { 
+            "romper": "romperse",
+            "quebrar": "quebrarse",
+            "estropear": "estropearse" 
+          }
+        },
+        "burning_spoiling": {
+          "verbs": { 
+            "quemar": "quemarse",
+            "arruinar": "arruinarse"
+          }
+        },
+        "running_out": {
+          "verbs": { 
+            "acabar": "acabarse",
+            "terminar": "terminarse"
+          }
+        }
+      }
     }
   },
   "educational_content": {
     "diagnostic_rule": {
-      "text": "If you can paraphrase 'se' as 'a sí mismo/a' (to oneself) without changing the meaning, it is usually REFLEXIVE. If not, it is PRONOMINAL.",
+      "text": "If you can paraphrase 'se' as 'a sí mismo/a' (to oneself) without changing the meaning, it is usually REFLEXIVE. If not, it is PRONOMINAL. If it implies an accident affecting someone (se me...), it is ACCIDENTAL/DATIVE.",
       "examples": [
         { "spanish": "Me lavo", "paraphrase": "Lavo a mí mismo", "result": "Reflexive" },
-        { "spanish": "Me voy", "paraphrase": "Voy a mí mismo", "result": "Invalid (Meaning shift to 'leave')" }
+        { "spanish": "Me voy", "paraphrase": "Voy a mí mismo", "result": "Invalid (Meaning shift to 'leave')" },
+        { "spanish": "Se me cayó", "paraphrase": "Dropped accidentally", "result": "Accidental Dative" }
       ]
     },
     "nuance_note": "Some verbs can be reflexive in one context and pronominal in another. Classification is a learning aid, not a rigid taxonomy."
