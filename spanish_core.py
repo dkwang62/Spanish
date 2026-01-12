@@ -1,6 +1,6 @@
-# spanish_core.py (v7.1)
+# spanish_core.py (v7.2)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: Added STANDARD_VERB_DRILL as a fallback for non-pronominal verbs
+# Updated: Restored ALL templates (Reflexive, Pronominal, Accidental, Standard)
 
 from __future__ import annotations
 
@@ -138,6 +138,7 @@ def load_frequency_map(freq_path: str) -> Dict[str, int]:
 
 # --- TEMPLATES ---
 TEMPLATES: Dict[str, dict] = {
+    # 1. From your uploaded file (Reflexive)
     "REFLEXIVE_PLACEMENT_CORE": {
         "name": "Reflexive / se placement drill",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -146,7 +147,7 @@ TEMPLATES: Dict[str, dict] = {
 1. **Consistency:** Use the SAME subject and SAME non-verb vocabulary across all sentences in Sections A-D. Vary only the verb tense/mood.
 2. **Highlighting:** Highlight the CLITIC + VERB in **ALL CAPS** (e.g., "ME LAVO", "LAVARME").
 3. **Time/Tense Agreement:** Ensure time expressions (hoy, ayer, mañana) match the verb tense.
-4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers.
+4. **Subjunctive Licensing:** For Section E, ONLY use subjunctive with valid triggers (querer que, dudar que, etc.).
 
 **Task:** REFLEXIVE_PLACEMENT_CORE
 **Target Verb:** {infinitive}
@@ -157,16 +158,25 @@ TEMPLATES: Dict[str, dict] = {
 Briefly explain clitic placement for: Conjugated verbs, Infinitives, Gerunds, Imperatives.
 
 **Step 2: Generate Sections (5 sentences each)**
-* **Section A:** Indicative (Clitic before conjugated verb)
-* **Section B:** Infinitive (Attached clitic)
-* **Section C:** Gerund (Attached clitic)
-* **Section D:** Imperatives (Positive attached, Negative before)
-* **Section E:** Subjunctive (Trigger + que + subject + clitic + verb)
+
+* **Section A: Indicative (Clitic before conjugated verb)**
+    * Vary tenses (Present, Preterite, Future, etc.).
+    * Format: Spanish (English)
+* **Section B: Infinitive (Attached clitic)**
+    * Structure: verb + infinitive w/ clitic.
+* **Section C: Gerund (Attached clitic)**
+    * Structure: estar + gerund w/ clitic.
+* **Section D: Imperatives**
+    * Mix of Positive (attached) and Negative (before verb).
+* **Section E: Subjunctive**
+    * Structure: [Trigger] + que + [Subject] + [Clitic] + [Subjunctive Verb].
+    * *Note: Subject must change from trigger to clause.*
 
 **Step 3: Drill**
-Provide 10 fill-in-the-blank sentences mixing all structures above with an Answer Key.
+Provide 10 fill-in-the-blank sentences mixing all structures above. Provide an Answer Key at the end.
 """
     },
+    # 2. From your uploaded file (Pronominal)
     "PRONOMINAL_CONTRAST_PAIR": {
         "name": "Base vs pronominal contrast",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -181,22 +191,26 @@ Provide 10 fill-in-the-blank sentences mixing all structures above with an Answe
 **Meaning Shift:** {meaning_shift}
 
 **Step 1: Explanation**
-Explain the semantic contrast in 4–5 lines.
+Explain the semantic contrast in 4–5 lines. Focus on the shift in meaning or nuance caused by the clitic.
 
 **Step 2: Contrast Pairs (12 Total)**
-* **Sentence A:** Base Verb ({infinitive}).
-* **Sentence B:** Pronominal Verb ({pronominal_infinitive}).
-* Both sentences should share context.
+Generate 12 pairs of sentences. In each pair:
+* **Sentence A:** Uses the Base Verb ({infinitive}).
+* **Sentence B:** Uses the Pronominal Verb ({pronominal_infinitive}).
+* Both sentences should share context where possible to highlight the difference.
 
-**Distribution:**
+**Distribution Requirements:**
 * **6 Pairs:** Present Tense
-* **3 Pairs:** Past Tense
+* **3 Pairs:** Past Tense (Preterite vs Imperfect where natural)
 * **3 Pairs:** Future or "Ir a + inf"
 
 **Step 3: Decision Drill**
-Create 10 short scenarios where the user decides between Base or Pronominal forms.
+Create 10 short scenarios/sentences with a blank.
+* The user must decide between the Base or Pronominal form.
+* Provide the Answer Key with a one-line explanation for each.
 """
     },
+    # 3. Restored Verbatim (Accidental Core)
     "ACCIDENTAL_DATIVE_SE_CORE": {
         "name": "Accidental / dative se drill",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -220,6 +234,7 @@ Create 10 short scenarios where the user decides between Base or Pronominal form
 - Provide answer key.
 """
     },
+    # 4. Restored Verbatim (Accidental Contrast)
     "ACCIDENTAL_VS_INTENTIONAL_CONTRAST": {
         "name": "Accidental (se me...) vs intentional",
         "prompt": """You are the 'Spanish Radix' engine (v1). Execute the following task strictly.
@@ -243,7 +258,7 @@ Explain in 4–5 simple lines how the syntax changes the meaning from "I did X" 
 - Provide answers + one-line explanation.
 """
     },
-    # NEW: Fallback for all verbs
+    # 5. Standard Fallback (to fix "No templates available" error)
     "STANDARD_VERB_DRILL": {
         "name": "Standard conjugation & usage",
         "prompt": """You are the 'Spanish Radix' engine (v1).
@@ -307,15 +322,16 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             meaning_shift = "reflexive (self-directed)"
     
     # 3) CLASSIFY SE TYPE (Reflexive vs Pronominal vs Accidental)
+    # Use the computed pronominal_inf (either from override or seed)
     if is_pronominal and pronominal_inf:
         computed_type = classify_se_type(base, pronominal_inf, se_catalog)
         if computed_type:
-            se_type = computed_type 
+            se_type = computed_type # Explicit classification overrides generic logic
 
     usage = {
         "is_pronominal": is_pronominal,
         "pronominal_infinitive": pronominal_inf,
-        "se_type": se_type, 
+        "se_type": se_type, # Now holds 'reflexive', 'pronominal', or 'accidental_dative'
         "meaning_shift": meaning_shift,
         "notes": o.get("notes", "")
     }
