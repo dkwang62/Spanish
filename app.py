@@ -1,7 +1,7 @@
-# app.py (v7.1)
+# app.py (v8.0)
 # Updates:
-# 1. Added "Show all templates" toggle to disable smart filtering.
-# 2. Ensures users can see all prompts if they wish.
+# 1. REMOVED template filtering completely. All templates are visible for all verbs.
+# 2. Removed "Show all templates" checkbox (no longer needed).
 
 import streamlit as st
 
@@ -110,9 +110,6 @@ with st.sidebar:
     st.subheader("Display Settings")
     show_vos = st.checkbox("Show 'vos' (voseo)", value=True)
     show_vosotros = st.checkbox("Show 'vosotros'", value=True)
-    
-    # NEW: Toggle to override smart template filtering
-    show_all_templates = st.checkbox("Show all AI templates (Disable filtering)", value=False)
 
 
 # ==========================================
@@ -209,47 +206,19 @@ else:
 
     v = merge_usage(v, overrides)
     
-    # NEW: Determine SE CATEGORY from usage
-    usage_data = v.get("usage", {})
-    se_cat = usage_data.get("se_type")  # 'reflexive', 'pronominal', 'accidental_dative', or None
-
     tabs = st.tabs(["Conjugations", "Prompt generator"])
     with tabs[0]:
         from spanish_ui import render_conjugation_dashboard
         render_conjugation_dashboard(v, show_vos=show_vos, show_vosotros=show_vosotros)
 
     with tabs[1]:
-        # --- AUTO-ADAPTIVE TEMPLATE FILTERING ---
-        
-        def template_allowed(tid: str) -> bool:
-            # 1. Bypass if "Show all" is checked
-            if show_all_templates:
-                return True
-            
-            # 2. Strict filtering
-            if tid.startswith("ACCIDENTAL_"):
-                return se_cat == "accidental_dative"
-            
-            if tid.startswith("REFLEXIVE_"):
-                return se_cat == "reflexive"
-            
-            if tid.startswith("PRONOMINAL_"):
-                return se_cat == "pronominal"
-            
-            return True # Allow standard/generic templates
+        # --- SHOW ALL TEMPLATES (Filtering Removed) ---
+        template_id = st.selectbox(
+            "Template",
+            options=list(TEMPLATES.keys()),
+            format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
+        )
+        prompt = render_prompt(template_id, v)
 
-        available_templates = [k for k in TEMPLATES.keys() if template_allowed(k)]
-        
-        if not available_templates:
-            # Should not happen now that we have STANDARD_VERB_DRILL, but safe fallback
-            st.info("No specific templates available for this verb. Check 'Show all templates' in sidebar.")
-        else:
-            template_id = st.selectbox(
-                "Template",
-                options=available_templates,
-                format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
-            )
-            prompt = render_prompt(template_id, v)
-
-            st.subheader("Generated AI Prompt")
-            st.code(prompt, language="text")
+        st.subheader("Generated AI Prompt")
+        st.code(prompt, language="text")
