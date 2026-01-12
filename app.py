@@ -1,14 +1,14 @@
-# app.py (v8.1)
+# app.py (v9.0)
 # Updates:
-# 1. Fully supports Psychological/Experiencer verbs (Gustar-like).
-# 2. Ensures the new template shows up in the list.
+# 1. Fetches templates via load_templates() from JSON.
+# 2. Continues to allow viewing ALL templates (no filter).
 
 import streamlit as st
 
 from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
-    get_verb_record, merge_usage, TEMPLATES, render_prompt
+    get_verb_record, merge_usage, load_templates, render_prompt
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -17,6 +17,7 @@ DB_JSON = "jehle_verb_database.json"
 LOOKUP_JSON = "jehle_verb_lookup_index.json"
 FREQ_JSON = "verb_frequency_rank.json" 
 OVERRIDES_JSON = "verb_overrides.json"
+VERBS_CAT_JSON = "verbs_categorized.json" # New JSON path
 
 st.set_page_config(**PAGE_CONFIG)
 apply_styles()
@@ -25,6 +26,8 @@ ensure_state()
 verbs, lookup = load_jehle_db(DB_JSON, LOOKUP_JSON)
 rank_map = load_frequency_map(FREQ_JSON)
 overrides = load_overrides(OVERRIDES_JSON)
+# Pre-load templates for the UI
+templates_map = load_templates(VERBS_CAT_JSON)
 
 # Fetch state vars
 mode = st.session_state.get("mode", "grid")
@@ -213,11 +216,11 @@ else:
 
     with tabs[1]:
         # --- SHOW ALL TEMPLATES ---
-        # (Filtering removed as requested, but logic to detect type exists in spanish_core)
+        # Updated to use the pre-loaded templates map
         template_id = st.selectbox(
             "Template",
-            options=list(TEMPLATES.keys()),
-            format_func=lambda k: f"{TEMPLATES[k]['name']} ({k})"
+            options=list(templates_map.keys()),
+            format_func=lambda k: f"{templates_map[k]['name']} ({k})"
         )
         prompt = render_prompt(template_id, v)
 
