@@ -1,14 +1,15 @@
-# app.py (v9.0)
+# app.py (v10.0)
 # Updates:
-# 1. Fetches templates via load_templates() from JSON.
-# 2. Continues to allow viewing ALL templates (no filter).
+# 1. Added "By Category" to grid sorting options.
+# 2. Renders 5 sections: Experiencer, Accidental, Reflexive, Pronominal, Standard.
 
 import streamlit as st
 
 from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
-    get_verb_record, merge_usage, load_templates, render_prompt
+    get_verb_record, merge_usage, load_templates, render_prompt,
+    load_verb_seeds # Need this to access categories for grid
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -17,7 +18,7 @@ DB_JSON = "jehle_verb_database.json"
 LOOKUP_JSON = "jehle_verb_lookup_index.json"
 FREQ_JSON = "verb_frequency_rank.json" 
 OVERRIDES_JSON = "verb_overrides.json"
-VERBS_CAT_JSON = "verbs_categorized.json" # New JSON path
+VERBS_CAT_JSON = "verbs_categorized.json" 
 
 st.set_page_config(**PAGE_CONFIG)
 apply_styles()
@@ -26,7 +27,6 @@ ensure_state()
 verbs, lookup = load_jehle_db(DB_JSON, LOOKUP_JSON)
 rank_map = load_frequency_map(FREQ_JSON)
 overrides = load_overrides(OVERRIDES_JSON)
-# Pre-load templates for the UI
 templates_map = load_templates(VERBS_CAT_JSON)
 
 # Fetch state vars
@@ -41,7 +41,6 @@ st.title("Spanish Verb Lab")
 # ==========================================
 with st.sidebar:
     
-    # --- 1. NAVIGATION GROUP ---
     st.header("Navigation")
     
     if mode == "grid":
@@ -49,7 +48,6 @@ with st.sidebar:
     else:
         st.markdown(f"📍 Home › **{selected_inf}**")
 
-    # Action Buttons Logic
     if mode == "grid":
         if preview_inf:
             if st.button(f"Open '{preview_inf}' Details ➡", use_container_width=True, type="primary"):
@@ -66,7 +64,6 @@ with st.sidebar:
 
     st.divider()
 
-    # --- 2. SEARCH ---
     st.subheader("Search")
 
     if "search_query" not in st.session_state:
@@ -96,7 +93,6 @@ with st.sidebar:
 
     st.divider()
 
-    # --- 3. PREVIEW CARD (Grid Only) ---
     if mode == "grid":
         st.subheader("Preview")
         if preview_inf:
@@ -109,7 +105,6 @@ with st.sidebar:
             st.caption("Click a tile to preview.")
         st.divider()
 
-    # --- 4. SETTINGS ---
     st.subheader("Display Settings")
     show_vos = st.checkbox("Show 'vos' (voseo)", value=True)
     show_vosotros = st.checkbox("Show 'vosotros'", value=True)
@@ -120,14 +115,13 @@ with st.sidebar:
 # ==========================================
 
 if mode == "grid":
-    # Instruction Tip
     st.info("👆 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** (or the sidebar button) to open details.", icon="ℹ️")
 
     # --- TOP CONTROLS (Sort) ---
     sort_option = st.radio(
         "Sort Order",
-        options=["Alphabetical", "ar/er/ir/se", "Popularity"],
-        index=0, # Default: Alphabetical
+        options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity"], # ADDED "By Category"
+        index=0, 
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -150,6 +144,7 @@ if mode == "grid":
             base.sort(key=lambda inf: (_rank(inf), inf))
             return base
         
+        # All other modes start A-Z
         return sorted(base, key=lambda x: x.lower())
 
     base_list = build_list()
@@ -173,6 +168,7 @@ if mode == "grid":
                     args=(inf,),
                 )
 
+    # --- RENDER LOGIC ---
     if sort_option == "ar/er/ir/se":
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
@@ -192,6 +188,60 @@ if mode == "grid":
             st.divider()
             st.subheader("Other")
             render_tiles(other)
+
+    elif sort_option == "By Category":
+        # Load category data
+        ref_map, pron_map, acc_map, exp_list = load_verb_seeds(VERBS_CAT_JSON)
+        
+        # Buckets
+        experiencer = []
+        accidental = []
+        reflexive = []
+        pronominal = []
+        standard = []
+        
+        # Fast membership sets
+        exp_set = set(exp_list)
+        acc_keys = set(acc_map.keys())
+        ref_keys = set(ref_map.keys())
+        pron_keys = set(pron_map.keys())
+
+        for inf in base_list:
+            lower = inf.lower()
+            if lower in exp_set:
+                experiencer.append(inf)
+            elif lower in acc_keys:
+                accidental.append(inf)
+            elif lower in ref_keys:
+                reflexive.append(inf)
+            elif lower in pron_keys:
+                pronominal.append(inf)
+            else:
+                standard.append(inf)
+        
+        # Render sections
+        if experiencer:
+            st.subheader("🧠 Experiencer (Gustar-like)")
+            render_tiles(experiencer)
+            st.divider()
+            
+        if accidental:
+            st.subheader("💥 Accidental Se (Se me...)")
+            render_tiles(accidental)
+            st.divider()
+            
+        if reflexive:
+            st.subheader("🪞 Reflexive (Routine/Self)")
+            render_tiles(reflexive)
+            st.divider()
+            
+        if pronominal:
+            st.subheader("🔄 Pronominal (Meaning Shift)")
+            render_tiles(pronominal)
+            st.divider()
+            
+        st.subheader("Standard / Other")
+        render_tiles(standard)
 
     else:
         render_tiles(base_list, max_items=600)
@@ -216,7 +266,6 @@ else:
 
     with tabs[1]:
         # --- SHOW ALL TEMPLATES ---
-        # Updated to use the pre-loaded templates map
         template_id = st.selectbox(
             "Template",
             options=list(templates_map.keys()),
