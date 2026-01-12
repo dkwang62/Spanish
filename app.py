@@ -1,7 +1,7 @@
-# app.py (v8.0)
+# app.py (v8.1)
 # Updates:
-# 1. REMOVED template filtering completely. All templates are visible for all verbs.
-# 2. Removed "Show all templates" checkbox (no longer needed).
+# 1. Fully supports Psychological/Experiencer verbs (Gustar-like).
+# 2. Ensures the new template shows up in the list.
 
 import streamlit as st
 
@@ -212,7 +212,8 @@ else:
         render_conjugation_dashboard(v, show_vos=show_vos, show_vosotros=show_vosotros)
 
     with tabs[1]:
-        # --- SHOW ALL TEMPLATES (Filtering Removed) ---
+        # --- SHOW ALL TEMPLATES ---
+        # (Filtering removed as requested, but logic to detect type exists in spanish_core)
         template_id = st.selectbox(
             "Template",
             options=list(TEMPLATES.keys()),
