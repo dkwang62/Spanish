@@ -1,7 +1,7 @@
-# app.py (v7.0)
+# app.py (v7.1)
 # Updates:
-# 1. Template filtering based on se_category (Reflexive vs Pronominal vs Accidental)
-# 2. Uses updated spanish_core logic
+# 1. Added "Show all templates" toggle to disable smart filtering.
+# 2. Ensures users can see all prompts if they wish.
 
 import streamlit as st
 
@@ -110,6 +110,9 @@ with st.sidebar:
     st.subheader("Display Settings")
     show_vos = st.checkbox("Show 'vos' (voseo)", value=True)
     show_vosotros = st.checkbox("Show 'vosotros'", value=True)
+    
+    # NEW: Toggle to override smart template filtering
+    show_all_templates = st.checkbox("Show all AI templates (Disable filtering)", value=False)
 
 
 # ==========================================
@@ -217,32 +220,29 @@ else:
 
     with tabs[1]:
         # --- AUTO-ADAPTIVE TEMPLATE FILTERING ---
-        # Logic: 
-        # 1. If Accidental -> Show Accidental templates + General templates
-        # 2. If Reflexive -> Show Reflexive templates + General templates
-        # 3. If Pronominal -> Show Pronominal templates + General templates
-        # 4. If None -> Show only General (if any existed, but here we filter strictly)
         
         def template_allowed(tid: str) -> bool:
-            # Accidental templates
+            # 1. Bypass if "Show all" is checked
+            if show_all_templates:
+                return True
+            
+            # 2. Strict filtering
             if tid.startswith("ACCIDENTAL_"):
                 return se_cat == "accidental_dative"
             
-            # Reflexive templates
             if tid.startswith("REFLEXIVE_"):
                 return se_cat == "reflexive"
             
-            # Pronominal templates
             if tid.startswith("PRONOMINAL_"):
                 return se_cat == "pronominal"
             
-            return True # Allow other future templates
+            return True # Allow standard/generic templates
 
         available_templates = [k for k in TEMPLATES.keys() if template_allowed(k)]
         
-        # Fallback if list is empty (e.g. non-pronominal verb selected)
         if not available_templates:
-            st.info("No specific pronominal templates available for this verb type.")
+            # Should not happen now that we have STANDARD_VERB_DRILL, but safe fallback
+            st.info("No specific templates available for this verb. Check 'Show all templates' in sidebar.")
         else:
             template_id = st.selectbox(
                 "Template",
