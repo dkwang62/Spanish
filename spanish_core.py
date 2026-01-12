@@ -1,6 +1,6 @@
-# spanish_core.py (v9.0)
+# spanish_core.py (v10.0)
 # Core: Jehle DB + Pronominal JSON + Prompts (loaded from JSON) + Se Classification
-# Updated: Refactored templates to external JSON for easier editing
+# Updated: load_verb_seeds now returns Accidental verbs for Grid grouping
 
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 @st.cache_data(show_spinner=False)
-def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], List[str]]:
+def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], List[str]]:
     """
     Parses the categorized JSON into lookup structures.
-    Returns: (reflexive_flat, pronominal_flat, experiencer_list)
+    Returns: (reflexive_flat, pronominal_flat, accidental_flat, experiencer_list)
     """
     data = load_se_catalog(json_path)
     taxonomy = data.get("verb_taxonomy", {})
@@ -47,6 +47,7 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
 
     reflexive_flat = _flatten_categories("reflexive")
     pronominal_flat = _flatten_categories("pronominal")
+    accidental_flat = _flatten_categories("accidental_dative") # NEW
     
     # Experiencer list (just a set of infinitives)
     experiencer_set = set()
@@ -55,31 +56,22 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
         for base in content.get("verbs", {}).keys():
             experiencer_set.add(base.lower())
     
-    return reflexive_flat, pronominal_flat, list(experiencer_set)
+    return reflexive_flat, pronominal_flat, accidental_flat, list(experiencer_set)
 
 @st.cache_data(show_spinner=False)
 def load_templates(json_path: str = VERBS_CAT_JSON) -> Dict[str, dict]:
-    """
-    Loads templates from JSON. 
-    Prompts are stored as lists of strings in JSON, we join them with newlines here.
-    """
     data = load_se_catalog(json_path)
     raw_templates = data.get("templates", {})
-    
     processed = {}
     for key, val in raw_templates.items():
         processed[key] = {
             "name": val.get("name", key),
-            # Join list of strings into single text block
             "prompt": "\n".join(val.get("prompt", [])) if isinstance(val.get("prompt"), list) else val.get("prompt", "")
         }
     return processed
 
 
 def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_catalog: dict) -> str | None:
-    """
-    Returns one of: 'reflexive', 'pronominal', 'accidental_dative', 'experiencer', or None.
-    """
     inf = infinitive.lower()
     taxonomy = se_catalog.get("verb_taxonomy", {})
     
@@ -177,7 +169,9 @@ def get_verb_record(verbs: List[dict], lookup: Dict[str, int], infinitive: str) 
 def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     base = (verb.get("infinitive") or "").lower()
     o = overrides.get(base, {})
-    ref_seed, pron_seed, exp_seed_list = load_verb_seeds(VERBS_CAT_JSON)
+    
+    # UPDATED: Unpack 4 items
+    ref_seed, pron_seed, acc_seed, exp_seed_list = load_verb_seeds(VERBS_CAT_JSON)
     se_catalog = load_se_catalog(VERBS_CAT_JSON)
     
     seed_pron = pron_seed.get(base)
@@ -224,7 +218,6 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
 
 
 def render_prompt(template_id: str, verb: dict) -> str:
-    # UPDATED: Load templates dynamically
     templates = load_templates(VERBS_CAT_JSON)
     t = templates.get(template_id)
     if not t:
