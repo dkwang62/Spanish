@@ -1,7 +1,7 @@
-# app.py (v10.0)
+# app.py (v10.1)
 # Updates:
-# 1. Added "By Category" to grid sorting options.
-# 2. Renders 5 sections: Experiencer, Accidental, Reflexive, Pronominal, Standard.
+# 1. "By Category" now matches both base (aburrir) and pronominal (aburrirse) forms.
+# 2. Fixes the issue of "-se" verbs appearing in Standard.
 
 import streamlit as st
 
@@ -9,7 +9,7 @@ from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
     get_verb_record, merge_usage, load_templates, render_prompt,
-    load_verb_seeds # Need this to access categories for grid
+    load_verb_seeds
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -120,7 +120,7 @@ if mode == "grid":
     # --- TOP CONTROLS (Sort) ---
     sort_option = st.radio(
         "Sort Order",
-        options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity"], # ADDED "By Category"
+        options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity"], 
         index=0, 
         horizontal=True,
         label_visibility="collapsed"
@@ -144,7 +144,6 @@ if mode == "grid":
             base.sort(key=lambda inf: (_rank(inf), inf))
             return base
         
-        # All other modes start A-Z
         return sorted(base, key=lambda x: x.lower())
 
     base_list = build_list()
@@ -200,21 +199,22 @@ if mode == "grid":
         pronominal = []
         standard = []
         
-        # Fast membership sets
+        # Fast membership sets - UPDATED TO INCLUDE VALUES (PRONOMINAL FORMS)
         exp_set = set(exp_list)
-        acc_keys = set(acc_map.keys())
-        ref_keys = set(ref_map.keys())
-        pron_keys = set(pron_map.keys())
+        # For maps, include both Keys (base) and Values (pronominal form) to match whatever is in the DB
+        acc_set = set(acc_map.keys()) | set(acc_map.values())
+        ref_set = set(ref_map.keys()) | set(ref_map.values())
+        pron_set = set(pron_map.keys()) | set(pron_map.values())
 
         for inf in base_list:
             lower = inf.lower()
             if lower in exp_set:
                 experiencer.append(inf)
-            elif lower in acc_keys:
+            elif lower in acc_set:
                 accidental.append(inf)
-            elif lower in ref_keys:
+            elif lower in ref_set:
                 reflexive.append(inf)
-            elif lower in pron_keys:
+            elif lower in pron_set:
                 pronominal.append(inf)
             else:
                 standard.append(inf)
