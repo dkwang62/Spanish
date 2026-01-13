@@ -1,6 +1,6 @@
-# spanish_core.py (v10.2)
+# spanish_core.py (v11.0)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: Handles complex JSON values (dicts) for verbs with metadata
+# Updated: Added get_taxonomy_map() for granular Grid View grouping
 
 from __future__ import annotations
 
@@ -29,9 +29,62 @@ def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 @st.cache_data(show_spinner=False)
+def get_taxonomy_map(json_path: str = VERBS_CAT_JSON) -> Dict[str, Dict[str, str]]:
+    """
+    Builds a reverse map for the grid view:
+    verb_string -> { 'root': 'Reflexive', 'sub': 'Daily Routine' }
+    
+    Maps BOTH base ('lavar') and pronominal ('lavarse') forms to ensure matching.
+    """
+    data = load_se_catalog(json_path)
+    taxonomy = data.get("verb_taxonomy", {})
+    mapping = {}
+
+    # Define nice display names for roots
+    root_names = {
+        "reflexive": "🪞 Reflexive (Self-directed)",
+        "pronominal": "🔄 Pronominal (Meaning Shift)",
+        "accidental_dative": "💥 Accidental Se (Se me...)",
+        "experiencer": "🧠 Experiencer (Gustar-like)"
+    }
+
+    # Iterate through the hierarchy
+    for root_key, root_data in taxonomy.items():
+        root_label = root_names.get(root_key, root_key.title())
+        categories = root_data.get("categories", {})
+        
+        for sub_key, sub_data in categories.items():
+            # Format sub-category key: "daily_routine" -> "Daily Routine"
+            sub_label = sub_key.replace("_", " ").title()
+            
+            # The 'verbs' object can be complex, so we parse carefully
+            verbs_dict = sub_data.get("verbs", {})
+            for base, val in verbs_dict.items():
+                
+                # 1. Determine Pronominal Form
+                if isinstance(val, dict):
+                    pron = val.get("form", "")
+                    # Special check: Experiencer verbs might have 'related_pronominal'
+                    if not pron:
+                        # Fallback for complex experiencer objects like {form: 'aburrir', related...}
+                        pron = val.get("related_pronominal", "")
+                else:
+                    pron = val
+                
+                # 2. Map Base form
+                if base:
+                    mapping[base.lower()] = {"root": root_label, "sub": sub_label}
+                
+                # 3. Map Pronominal form (if exists)
+                if pron:
+                    mapping[pron.lower()] = {"root": root_label, "sub": sub_label}
+                    
+    return mapping
+
+@st.cache_data(show_spinner=False)
 def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], List[str]]:
     """
-    Parses categorized JSON. Handles both string values ("lavarse") and dict values ({"form": "lavarse"}).
+    Parses categorized JSON for Drill Logic (Templates).
     Returns flat dicts: {base: pronominal_form}
     """
     data = load_se_catalog(json_path)
@@ -42,12 +95,10 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for cat_name, content in cats.items():
             for base, val in content.get("verbs", {}).items():
-                # Handle simple string or object with metadata
                 if isinstance(val, dict):
                     pron = val.get("form", "")
                 else:
                     pron = val
-                
                 if pron:
                     flat_map[base.lower()] = pron
         return flat_map
@@ -56,11 +107,9 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
     pronominal_flat = _flatten_categories("pronominal")
     accidental_flat = _flatten_categories("accidental_dative")
     
-    # Experiencer list (just a set of infinitives)
     experiencer_set = set()
     exp_cats = taxonomy.get("experiencer", {}).get("categories", {})
     for _, content in exp_cats.items():
-        # Experiencer verbs are keyed by base infinitive
         for base in content.get("verbs", {}).keys():
             experiencer_set.add(base.lower())
     
@@ -88,17 +137,13 @@ def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_cata
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for _, content in cats.items():
             for val in content.get("verbs", {}).values():
-                # Handle mixed types
                 if isinstance(val, dict):
                     target = val.get("form", "") if use_values else val
                 else:
                     target = val
-                
                 if use_values:
                     s.add(target.lower())
-            
             if not use_values:
-                # For keys
                 for k in content.get("verbs", {}).keys():
                     s.add(k.lower())
         return s
@@ -210,7 +255,6 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             pronominal_inf = seed_refl
             meaning_shift = "reflexive (self-directed)"
     
-    # 3) CLASSIFY SE TYPE
     if is_pronominal and pronominal_inf:
         computed_type = classify_se_type(base, pronominal_inf, se_catalog)
         if computed_type:
