@@ -1,15 +1,16 @@
-# app.py (v10.1)
+# app.py (v11.0)
 # Updates:
-# 1. "By Category" now matches both base (aburrir) and pronominal (aburrirse) forms.
-# 2. Fixes the issue of "-se" verbs appearing in Standard.
+# 1. "By Category" now renders all sub-categories (nested view).
+# 2. Ensures every verb matches via get_taxonomy_map() (Base or Pronominal).
 
 import streamlit as st
+from collections import defaultdict
 
 from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
     get_verb_record, merge_usage, load_templates, render_prompt,
-    load_verb_seeds
+    get_taxonomy_map # NEW function for full mapping
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -189,59 +190,58 @@ if mode == "grid":
             render_tiles(other)
 
     elif sort_option == "By Category":
-        # Load category data
-        ref_map, pron_map, acc_map, exp_list = load_verb_seeds(VERBS_CAT_JSON)
+        # 1. Get the comprehensive reverse map
+        taxonomy_map = get_taxonomy_map()
         
-        # Buckets
-        experiencer = []
-        accidental = []
-        reflexive = []
-        pronominal = []
+        # 2. Bucket the DB verbs
+        # Structure: { RootName: { SubName: [verbs...] } }
+        grouped = defaultdict(lambda: defaultdict(list))
         standard = []
         
-        # Fast membership sets - UPDATED TO INCLUDE VALUES (PRONOMINAL FORMS)
-        exp_set = set(exp_list)
-        # For maps, include both Keys (base) and Values (pronominal form) to match whatever is in the DB
-        acc_set = set(acc_map.keys()) | set(acc_map.values())
-        ref_set = set(ref_map.keys()) | set(ref_map.values())
-        pron_set = set(pron_map.keys()) | set(pron_map.values())
-
         for inf in base_list:
-            lower = inf.lower()
-            if lower in exp_set:
-                experiencer.append(inf)
-            elif lower in acc_set:
-                accidental.append(inf)
-            elif lower in ref_set:
-                reflexive.append(inf)
-            elif lower in pron_set:
-                pronominal.append(inf)
+            meta = taxonomy_map.get(inf.lower())
+            if meta:
+                root = meta['root']
+                sub = meta['sub']
+                grouped[root][sub].append(inf)
             else:
                 standard.append(inf)
         
-        # Render sections
-        if experiencer:
-            st.subheader("🧠 Experiencer (Gustar-like)")
-            render_tiles(experiencer)
+        # 3. Render in a specific order if possible, else alphabetical
+        # Define preferred Root order
+        root_order = [
+            "🧠 Experiencer (Gustar-like)",
+            "💥 Accidental Se (Se me...)",
+            "🪞 Reflexive (Self-directed)",
+            "🔄 Pronominal (Meaning Shift)"
+        ]
+        
+        # Render known roots first
+        for root in root_order:
+            if root in grouped:
+                st.header(root)
+                sub_groups = grouped[root]
+                
+                # Render sub-categories sorted alphabetically
+                for sub in sorted(sub_groups.keys()):
+                    st.markdown(f"#### {sub}")
+                    render_tiles(sorted(sub_groups[sub]))
+                
+                st.divider()
+                del grouped[root] # Remove processed
+        
+        # Render any remaining roots (if JSON changed)
+        for root, sub_groups in grouped.items():
+            st.header(root)
+            for sub in sorted(sub_groups.keys()):
+                st.markdown(f"#### {sub}")
+                render_tiles(sorted(sub_groups[sub]))
             st.divider()
             
-        if accidental:
-            st.subheader("💥 Accidental Se (Se me...)")
-            render_tiles(accidental)
-            st.divider()
-            
-        if reflexive:
-            st.subheader("🪞 Reflexive (Routine/Self)")
-            render_tiles(reflexive)
-            st.divider()
-            
-        if pronominal:
-            st.subheader("🔄 Pronominal (Meaning Shift)")
-            render_tiles(pronominal)
-            st.divider()
-            
-        st.subheader("Standard / Other")
-        render_tiles(standard)
+        # Render Standard
+        if standard:
+            st.header("Standard / Other")
+            render_tiles(standard)
 
     else:
         render_tiles(base_list, max_items=600)
