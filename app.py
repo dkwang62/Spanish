@@ -1,16 +1,18 @@
-# app.py (v11.0)
+# app.py (v11.2)
 # Updates:
-# 1. "By Category" now renders all sub-categories (nested view).
-# 2. Ensures every verb matches via get_taxonomy_map() (Base or Pronominal).
+# 1. Guide Tab now reads content from 'verbs_categorized.json' (key: "reference_guide").
+# 2. Removed logic that looked for "help.json".
 
 import streamlit as st
+import json
 from collections import defaultdict
+from pathlib import Path
 
 from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
     get_verb_record, merge_usage, load_templates, render_prompt,
-    get_taxonomy_map # NEW function for full mapping
+    get_taxonomy_map
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -19,7 +21,7 @@ DB_JSON = "jehle_verb_database.json"
 LOOKUP_JSON = "jehle_verb_lookup_index.json"
 FREQ_JSON = "verb_frequency_rank.json" 
 OVERRIDES_JSON = "verb_overrides.json"
-VERBS_CAT_JSON = "verbs_categorized.json" 
+VERBS_CAT_JSON = "verbs_categorized.json"
 
 st.set_page_config(**PAGE_CONFIG)
 apply_styles()
@@ -29,6 +31,18 @@ verbs, lookup = load_jehle_db(DB_JSON, LOOKUP_JSON)
 rank_map = load_frequency_map(FREQ_JSON)
 overrides = load_overrides(OVERRIDES_JSON)
 templates_map = load_templates(VERBS_CAT_JSON)
+
+# --- Helper to load Guide from the Main JSON ---
+@st.cache_data
+def load_guide_content(path: str):
+    p = Path(path)
+    if not p.exists():
+        return None
+    with open(p, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        return data.get("reference_guide") # Load specific key
+
+guide_content = load_guide_content(VERBS_CAT_JSON)
 
 # Fetch state vars
 mode = st.session_state.get("mode", "grid")
@@ -41,9 +55,7 @@ st.title("Spanish Verb Lab")
 # 🛑 SIDEBAR: NAVIGATION & CONTROLS
 # ==========================================
 with st.sidebar:
-    
     st.header("Navigation")
-    
     if mode == "grid":
         st.markdown("📍 **Home / Grid**")
     else:
@@ -66,7 +78,6 @@ with st.sidebar:
     st.divider()
 
     st.subheader("Search")
-
     if "search_query" not in st.session_state:
         st.session_state["search_query"] = ""
     if "search_input" not in st.session_state:
@@ -118,7 +129,6 @@ with st.sidebar:
 if mode == "grid":
     st.info("👆 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** (or the sidebar button) to open details.", icon="ℹ️")
 
-    # --- TOP CONTROLS (Sort) ---
     sort_option = st.radio(
         "Sort Order",
         options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity"], 
@@ -127,7 +137,6 @@ if mode == "grid":
         label_visibility="collapsed"
     )
 
-    # --- List Building Logic ---
     def _rank(inf: str) -> int:
         return rank_map.get(inf.lower(), 10_000_000)
 
@@ -138,13 +147,10 @@ if mode == "grid":
             base = [r["infinitive"] for r in results if r.get("infinitive")]
         else:
             base = [v["infinitive"] for v in verbs if v.get("infinitive")]
-        
         base = list(dict.fromkeys(base))
-
         if sort_option == "Popularity":
             base.sort(key=lambda inf: (_rank(inf), inf))
             return base
-        
         return sorted(base, key=lambda x: x.lower())
 
     base_list = build_list()
@@ -158,7 +164,6 @@ if mode == "grid":
                 label = f"{inf}"
                 is_preview = (st.session_state.get("preview") == inf)
                 btn_type = "primary" if is_preview else "secondary"
-                
                 cols[j].button(
                     label,
                     key=f"tile_{inf}",
@@ -168,7 +173,6 @@ if mode == "grid":
                     args=(inf,),
                 )
 
-    # --- RENDER LOGIC ---
     if sort_option == "ar/er/ir/se":
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
@@ -183,32 +187,23 @@ if mode == "grid":
         st.divider()
         st.subheader("-ir verbs")
         render_tiles(ir)
-        
         if other:
             st.divider()
             st.subheader("Other")
             render_tiles(other)
 
     elif sort_option == "By Category":
-        # 1. Get the comprehensive reverse map
         taxonomy_map = get_taxonomy_map()
-        
-        # 2. Bucket the DB verbs
-        # Structure: { RootName: { SubName: [verbs...] } }
         grouped = defaultdict(lambda: defaultdict(list))
         standard = []
         
         for inf in base_list:
             meta = taxonomy_map.get(inf.lower())
             if meta:
-                root = meta['root']
-                sub = meta['sub']
-                grouped[root][sub].append(inf)
+                grouped[meta['root']][meta['sub']].append(inf)
             else:
                 standard.append(inf)
         
-        # 3. Render in a specific order if possible, else alphabetical
-        # Define preferred Root order
         root_order = [
             "🧠 Experiencer (Gustar-like)",
             "💥 Accidental Se (Se me...)",
@@ -216,21 +211,16 @@ if mode == "grid":
             "🔄 Pronominal (Meaning Shift)"
         ]
         
-        # Render known roots first
         for root in root_order:
             if root in grouped:
                 st.header(root)
                 sub_groups = grouped[root]
-                
-                # Render sub-categories sorted alphabetically
                 for sub in sorted(sub_groups.keys()):
                     st.markdown(f"#### {sub}")
                     render_tiles(sorted(sub_groups[sub]))
-                
                 st.divider()
-                del grouped[root] # Remove processed
+                del grouped[root]
         
-        # Render any remaining roots (if JSON changed)
         for root, sub_groups in grouped.items():
             st.header(root)
             for sub in sorted(sub_groups.keys()):
@@ -238,7 +228,6 @@ if mode == "grid":
                 render_tiles(sorted(sub_groups[sub]))
             st.divider()
             
-        # Render Standard
         if standard:
             st.header("Standard / Other")
             render_tiles(standard)
@@ -259,19 +248,54 @@ else:
 
     v = merge_usage(v, overrides)
     
-    tabs = st.tabs(["Conjugations", "Prompt generator"])
+    # Added 3rd tab "📘 Guide"
+    tabs = st.tabs(["Conjugations", "Prompt generator", "📘 Guide"])
+    
     with tabs[0]:
         from spanish_ui import render_conjugation_dashboard
         render_conjugation_dashboard(v, show_vos=show_vos, show_vosotros=show_vosotros)
 
     with tabs[1]:
-        # --- SHOW ALL TEMPLATES ---
         template_id = st.selectbox(
             "Template",
             options=list(templates_map.keys()),
             format_func=lambda k: f"{templates_map[k]['name']} ({k})"
         )
         prompt = render_prompt(template_id, v)
-
         st.subheader("Generated AI Prompt")
         st.code(prompt, language="text")
+
+    with tabs[2]:
+        if guide_content:
+            st.header(guide_content.get("title", "Guide"))
+            st.info(guide_content.get("summary", ""))
+            
+            # Render Sections
+            for section in guide_content.get("sections", []):
+                with st.expander(section.get("heading", "Section"), expanded=False):
+                    
+                    # Points
+                    for point in section.get("points", []):
+                        st.markdown(f"- {point}")
+                    
+                    # Rule (if present)
+                    if "rule" in section:
+                        st.markdown(f"**Rule:** {section['rule']}")
+
+                    # Examples
+                    examples = section.get("examples") or section.get("mini_examples")
+                    if examples:
+                        st.markdown("---")
+                        st.markdown("**Examples:**")
+                        for ex in examples:
+                            # Format 1: Base vs Se
+                            if "base" in ex:
+                                st.markdown(f"- **{ex['base']}** → **{ex['with_se']}**: {ex.get('se_meaning_en', '')}")
+                            # Format 2: Spanish vs Paraphrase
+                            elif "paraphrase" in ex:
+                                st.markdown(f"- *{ex['spanish']}* → {ex['paraphrase']} ({ex.get('note', '')})")
+                            # Format 3: Generic
+                            elif "spanish" in ex:
+                                st.markdown(f"- {ex['spanish']} ({ex.get('en', '')})")
+        else:
+            st.warning("Guide content not found in verbs_categorized.json.")
