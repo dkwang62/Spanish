@@ -1,6 +1,6 @@
-# spanish_core.py (v10.0)
-# Core: Jehle DB + Pronominal JSON + Prompts (loaded from JSON) + Se Classification
-# Updated: load_verb_seeds now returns Accidental verbs for Grid grouping
+# spanish_core.py (v10.2)
+# Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
+# Updated: Handles complex JSON values (dicts) for verbs with metadata
 
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
 @st.cache_data(show_spinner=False)
 def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], List[str]]:
     """
-    Parses the categorized JSON into lookup structures.
-    Returns: (reflexive_flat, pronominal_flat, accidental_flat, experiencer_list)
+    Parses categorized JSON. Handles both string values ("lavarse") and dict values ({"form": "lavarse"}).
+    Returns flat dicts: {base: pronominal_form}
     """
     data = load_se_catalog(json_path)
     taxonomy = data.get("verb_taxonomy", {})
@@ -41,18 +41,26 @@ def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Di
         flat_map = {}
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for cat_name, content in cats.items():
-            for base, pron in content.get("verbs", {}).items():
-                flat_map[base.lower()] = pron
+            for base, val in content.get("verbs", {}).items():
+                # Handle simple string or object with metadata
+                if isinstance(val, dict):
+                    pron = val.get("form", "")
+                else:
+                    pron = val
+                
+                if pron:
+                    flat_map[base.lower()] = pron
         return flat_map
 
     reflexive_flat = _flatten_categories("reflexive")
     pronominal_flat = _flatten_categories("pronominal")
-    accidental_flat = _flatten_categories("accidental_dative") # NEW
+    accidental_flat = _flatten_categories("accidental_dative")
     
     # Experiencer list (just a set of infinitives)
     experiencer_set = set()
     exp_cats = taxonomy.get("experiencer", {}).get("categories", {})
     for _, content in exp_cats.items():
+        # Experiencer verbs are keyed by base infinitive
         for base in content.get("verbs", {}).keys():
             experiencer_set.add(base.lower())
     
@@ -79,9 +87,20 @@ def classify_se_type(infinitive: str, pronominal_infinitive: str | None, se_cata
         s = set()
         cats = taxonomy.get(root_key, {}).get("categories", {})
         for _, content in cats.items():
-            target_dict = content.get("verbs", {})
-            iterator = target_dict.values() if use_values else target_dict.keys()
-            s.update([v.lower() for v in iterator])
+            for val in content.get("verbs", {}).values():
+                # Handle mixed types
+                if isinstance(val, dict):
+                    target = val.get("form", "") if use_values else val
+                else:
+                    target = val
+                
+                if use_values:
+                    s.add(target.lower())
+            
+            if not use_values:
+                # For keys
+                for k in content.get("verbs", {}).keys():
+                    s.add(k.lower())
         return s
 
     exp_all = _get_set("experiencer", use_values=False)
@@ -170,7 +189,6 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     base = (verb.get("infinitive") or "").lower()
     o = overrides.get(base, {})
     
-    # UPDATED: Unpack 4 items
     ref_seed, pron_seed, acc_seed, exp_seed_list = load_verb_seeds(VERBS_CAT_JSON)
     se_catalog = load_se_catalog(VERBS_CAT_JSON)
     
@@ -192,6 +210,7 @@ def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
             pronominal_inf = seed_refl
             meaning_shift = "reflexive (self-directed)"
     
+    # 3) CLASSIFY SE TYPE
     if is_pronominal and pronominal_inf:
         computed_type = classify_se_type(base, pronominal_inf, se_catalog)
         if computed_type:
