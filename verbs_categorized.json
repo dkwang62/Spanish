@@ -27,22 +27,30 @@
         "movement_position": {
           "verbs": {
             "sentar": "sentarse",
+            "parar": "pararse",
             "tumbar": "tumbarse",
             "agachar": "agacharse",
             "inclinar": "inclinarse",
+            "acercar": "acercarse",
+            "alejar": "alejarse",
             "esconder": "esconderse",
             "mirar": "mirarse",
-            "zambullir": "zambullirse"
+            "detener": "detenerse",
+            "mover": "moverse",
+            "zambullir": "zambullirse",
+            "echar": "echarse"
           }
-        }
-      }
-    },
-    "pronominal": {
-      "definition": "The 'se' form behaves like a different lexical verb (meaning shift, inchoative, or change of state).",
-      "categories": {
-        "mental_emotional_state": {
-          "description": "Inchoative: To get/become emotion (often moved from reflexive).",
+        },
+        "mental_emotional": {
           "verbs": {
+            "calmar": "calmarse",
+            "concentrar": "concentrarse",
+            "relajar": "relajarse",
+            "animar": "animarse",
+            "motivar": "motivarse",
+            "tranquilizar": "tranquilizarse",
+            "acostumbrar": "acostumbrarse",
+            "adaptar": "adaptarse",
             "aburrir": "aburrirse",
             "divertir": "divertirse",
             "preocupar": "preocuparse",
@@ -53,16 +61,14 @@
             "enojar": "enojarse",
             "entusiasmar": "entusiasmarse",
             "sentir": "sentirse",
-            "cansar": "cansarse",
-            "calmar": "calmarse",
-            "relajar": "relajarse",
-            "animar": "animarse",
-            "motivar": "motivarse",
-            "tranquilizar": "tranquilizarse",
-            "acostumbrar": "acostumbrarse",
-            "adaptar": "adaptarse"
+            "cansar": "cansarse"
           }
-        },
+        }
+      }
+    },
+    "pronominal": {
+      "definition": "The 'se' form behaves like a different lexical verb (meaning shift).",
+      "categories": {
         "change_of_state": {
           "verbs": {
             "hacer": "hacerse",
@@ -148,10 +154,7 @@
             "jugar": "jugarse",
             "ganar": "ganarse",
             "abonar": "abonarse",
-            "callar": "callarse",
-            "detener": "detenerse",
-            "mover": "moverse",
-            "echar": "echarse"
+            "callar": "callarse"
           }
         }
       }
@@ -164,15 +167,10 @@
           "verbs": { "caer": "caerse" }
         },
         "forgetting": {
-          "verbs": { 
-            "olvidar": { "form": "olvidarse", "requires_io_clitic": true } 
-          }
+          "verbs": { "olvidar": "olvidarse" }
         },
         "losing": {
-          "verbs": { 
-            "perder": { "form": "perderse", "requires_io_clitic": true },
-            "extraviar": "extraviarse" 
-          }
+          "verbs": { "perder": "perderse", "extraviar": "extraviarse" }
         },
         "breaking_damage": {
           "verbs": { 
@@ -189,8 +187,8 @@
         },
         "running_out": {
           "verbs": { 
-            "acabar": "acabársele",
-            "terminar": "terminársele"
+            "acabar": "acabarse",
+            "terminar": "terminarse"
           }
         }
       }
@@ -221,8 +219,8 @@
             "incomodar": "incomodar",
             "disgustar": "disgustar",
             "ofender": "ofender",
-            "aburrir": { "form": "aburrir", "related_pronominal": "aburrirse" },
-            "cansar": { "form": "cansar", "related_pronominal": "cansarse" }
+            "aburrir": "aburrir",
+            "cansar": "cansar"
           }
         },
         "emotional_impact": {
@@ -230,11 +228,11 @@
             "sorprender": "sorprender",
             "asombrar": "asombrar",
             "impresionar": "impresionar",
-            "asustar": { "form": "asustar", "related_pronominal": "asustarse" },
-            "preocupar": { "form": "preocupar", "related_pronominal": "preocuparse" },
-            "alegrar": { "form": "alegrar", "related_pronominal": "alegrarse" },
-            "entristecer": { "form": "entristecer", "related_pronominal": "entristecerse" },
-            "divertir": { "form": "divertir", "related_pronominal": "divertirse" },
+            "asustar": "asustar",
+            "preocupar": "preocupar",
+            "alegrar": "alegrar",
+            "entristecer": "entristecer",
+            "divertir": "divertir",
             "extrañar": "extrañar"
           }
         },
@@ -468,5 +466,120 @@
         "Provide 5 fill-in-the-blank exercises focusing on correct conjugation choice."
       ]
     }
+  },
+  "reference_guide": {
+    "title": "REFLEXIVE_SEED vs PRONOMINAL_SEED",
+    "summary": "Both lists contain verbs commonly used with 'se', but for different reasons: reflexive (self-directed actions) vs pronominal/lexical (meaning-shifting or fixed 'se' usage).",
+    "sections": [
+      {
+        "heading": "REFLEXIVE_SEED (mostly literal reflexive / routine actions)",
+        "points": [
+          "‘se’ usually means the subject performs the action on themselves (self-directed object).",
+          "Meaning stays close to the base verb; the difference is mainly ‘to oneself’.",
+          "Often used for daily routines (wake up, shower, dress, etc.).",
+          "The base verb can usually still be used transitively with an object."
+        ],
+        "examples": [
+          {
+            "base": "lavar",
+            "with_se": "lavarse",
+            "base_meaning_en": "to wash (something)",
+            "se_meaning_en": "to wash oneself"
+          },
+          {
+            "base": "peinar",
+            "with_se": "peinarse",
+            "base_meaning_en": "to comb (someone/something)",
+            "se_meaning_en": "to comb one’s hair"
+          }
+        ]
+      },
+      {
+        "heading": "PRONOMINAL_SEED (mostly lexical / meaning-shifting ‘se’ verbs)",
+        "points": [
+          "The ‘se’ form often behaves like a different lexical verb (meaning shift, nuance change, or the more natural/common form).",
+          "‘se’ is not simply ‘myself/yourself’; it can mark departure, change of state, idiomatic meanings, or other nuances.",
+          "Useful for contrast drills because base vs pronominal forms can differ substantially."
+        ],
+        "examples": [
+          {
+            "base": "ir",
+            "with_se": "irse",
+            "base_meaning_en": "to go",
+            "se_meaning_en": "to leave / go away"
+          },
+          {
+            "base": "dormir",
+            "with_se": "dormirse",
+            "base_meaning_en": "to sleep",
+            "se_meaning_en": "to fall asleep"
+          },
+          {
+            "base": "poner",
+            "with_se": "ponerse",
+            "base_meaning_en": "to put",
+            "se_meaning_en": "to put on / to become (get)"
+          },
+          {
+            "base": "volver",
+            "with_se": "volverse",
+            "base_meaning_en": "to return",
+            "se_meaning_en": "to become (often permanent change)"
+          },
+          {
+            "base": "perder",
+            "with_se": "perderse",
+            "base_meaning_en": "to lose (something)",
+            "se_meaning_en": "to get lost / to miss (an event)"
+          },
+          {
+            "base": "hacer",
+            "with_se": "hacerse",
+            "base_meaning_en": "to do/make",
+            "se_meaning_en": "to become / make oneself"
+          }
+        ]
+      },
+      {
+        "heading": "Quick diagnostic rule",
+        "rule": "If you can paraphrase the ‘se’ meaning as ‘a sí mismo/a’ (to oneself) without changing meaning much, it’s often reflexive. If not, it’s often pronominal/lexical.",
+        "mini_examples": [
+          {
+            "spanish": "Me lavo.",
+            "paraphrase": "Lavo a mí mismo.",
+            "note": "reflexive (self-directed)"
+          },
+          {
+            "spanish": "Me voy.",
+            "paraphrase": "Voy a mí mismo.",
+            "note": "not equivalent → pronominal (meaning shift: ‘leave’)"
+          },
+          {
+            "spanish": "Se durmió.",
+            "paraphrase": "Durmió a sí mismo.",
+            "note": "not equivalent → pronominal (meaning shift: ‘fall asleep’)"
+          }
+        ]
+      },
+      {
+        "heading": "Important nuance",
+        "points": [
+          "Some verbs can be reflexive in one context and pronominal/lexical in another; classification is a learning aid, not a perfect linguistic taxonomy.",
+          "Many verbs allow both transitive and reflexive/intransitive uses (e.g., sentar vs sentarse)."
+        ],
+        "examples": [
+          {
+            "spanish": "Siento al niño.",
+            "en": "I sit the child down.",
+            "type": "transitive base"
+          },
+          {
+            "spanish": "Me siento.",
+            "en": "I sit down.",
+            "type": "reflexive/intransitive"
+          }
+        ]
+      }
+    ]
   }
 }
