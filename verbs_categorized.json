@@ -27,30 +27,22 @@
         "movement_position": {
           "verbs": {
             "sentar": "sentarse",
-            "parar": "pararse",
             "tumbar": "tumbarse",
             "agachar": "agacharse",
             "inclinar": "inclinarse",
-            "acercar": "acercarse",
-            "alejar": "alejarse",
             "esconder": "esconderse",
             "mirar": "mirarse",
-            "detener": "detenerse",
-            "mover": "moverse",
-            "zambullir": "zambullirse",
-            "echar": "echarse"
+            "zambullir": "zambullirse"
           }
-        },
-        "mental_emotional": {
+        }
+      }
+    },
+    "pronominal": {
+      "definition": "The 'se' form behaves like a different lexical verb (meaning shift, inchoative, or change of state).",
+      "categories": {
+        "mental_emotional_state": {
+          "description": "Inchoative: To get/become emotion (often moved from reflexive).",
           "verbs": {
-            "calmar": "calmarse",
-            "concentrar": "concentrarse",
-            "relajar": "relajarse",
-            "animar": "animarse",
-            "motivar": "motivarse",
-            "tranquilizar": "tranquilizarse",
-            "acostumbrar": "acostumbrarse",
-            "adaptar": "adaptarse",
             "aburrir": "aburrirse",
             "divertir": "divertirse",
             "preocupar": "preocuparse",
@@ -61,14 +53,16 @@
             "enojar": "enojarse",
             "entusiasmar": "entusiasmarse",
             "sentir": "sentirse",
-            "cansar": "cansarse"
+            "cansar": "cansarse",
+            "calmar": "calmarse",
+            "relajar": "relajarse",
+            "animar": "animarse",
+            "motivar": "motivarse",
+            "tranquilizar": "tranquilizarse",
+            "acostumbrar": "acostumbrarse",
+            "adaptar": "adaptarse"
           }
-        }
-      }
-    },
-    "pronominal": {
-      "definition": "The 'se' form behaves like a different lexical verb (meaning shift).",
-      "categories": {
+        },
         "change_of_state": {
           "verbs": {
             "hacer": "hacerse",
@@ -154,7 +148,10 @@
             "jugar": "jugarse",
             "ganar": "ganarse",
             "abonar": "abonarse",
-            "callar": "callarse"
+            "callar": "callarse",
+            "detener": "detenerse",
+            "mover": "moverse",
+            "echar": "echarse"
           }
         }
       }
@@ -167,10 +164,15 @@
           "verbs": { "caer": "caerse" }
         },
         "forgetting": {
-          "verbs": { "olvidar": "olvidarse" }
+          "verbs": { 
+            "olvidar": { "form": "olvidarse", "requires_io_clitic": true } 
+          }
         },
         "losing": {
-          "verbs": { "perder": "perderse", "extraviar": "extraviarse" }
+          "verbs": { 
+            "perder": { "form": "perderse", "requires_io_clitic": true },
+            "extraviar": "extraviarse" 
+          }
         },
         "breaking_damage": {
           "verbs": { 
@@ -187,8 +189,8 @@
         },
         "running_out": {
           "verbs": { 
-            "acabar": "acabarse",
-            "terminar": "terminarse"
+            "acabar": "acabársele",
+            "terminar": "terminársele"
           }
         }
       }
@@ -219,8 +221,8 @@
             "incomodar": "incomodar",
             "disgustar": "disgustar",
             "ofender": "ofender",
-            "aburrir": "aburrir",
-            "cansar": "cansar"
+            "aburrir": { "form": "aburrir", "related_pronominal": "aburrirse" },
+            "cansar": { "form": "cansar", "related_pronominal": "cansarse" }
           }
         },
         "emotional_impact": {
@@ -228,11 +230,11 @@
             "sorprender": "sorprender",
             "asombrar": "asombrar",
             "impresionar": "impresionar",
-            "asustar": "asustar",
-            "preocupar": "preocupar",
-            "alegrar": "alegrar",
-            "entristecer": "entristecer",
-            "divertir": "divertir",
+            "asustar": { "form": "asustar", "related_pronominal": "asustarse" },
+            "preocupar": { "form": "preocupar", "related_pronominal": "preocuparse" },
+            "alegrar": { "form": "alegrar", "related_pronominal": "alegrarse" },
+            "entristecer": { "form": "entristecer", "related_pronominal": "entristecerse" },
+            "divertir": { "form": "divertir", "related_pronominal": "divertirse" },
             "extrañar": "extrañar"
           }
         },
