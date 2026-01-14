@@ -260,15 +260,120 @@
       }
     }
   },
-  "educational_content": {
-    "diagnostic_rule": {
-      "text": "Check the structure: Is the person the SUBJECT (doing it) or the EXPERIENCER (feeling it)? If 'it implies X happens to me/pleases me' (me gusta, me duele), it is an EXPERIENCER verb.",
-      "examples": [
-        { "spanish": "Me lavo", "type": "Reflexive (I wash myself)" },
-        { "spanish": "Me gusta", "type": "Experiencer (It pleases me)" },
-        { "spanish": "Se me cayó", "type": "Accidental (It dropped on me)" }
-      ]
-    }
+  "reference_guide": {
+    "title": "REFLEXIVE_SEED vs PRONOMINAL_SEED",
+    "summary": "Both lists contain verbs commonly used with 'se', but for different reasons: reflexive (self-directed actions) vs pronominal/lexical (meaning-shifting or fixed 'se' usage).",
+    "sections": [
+      {
+        "heading": "REFLEXIVE_SEED (mostly literal reflexive / routine actions)",
+        "points": [
+          "‘se’ usually means the subject performs the action on themselves (self-directed object).",
+          "Meaning stays close to the base verb; the difference is mainly ‘to oneself’.",
+          "Often used for daily routines (wake up, shower, dress, etc.).",
+          "The base verb can usually still be used transitively with an object."
+        ],
+        "examples": [
+          {
+            "base": "lavar",
+            "with_se": "lavarse",
+            "base_meaning_en": "to wash (something)",
+            "se_meaning_en": "to wash oneself"
+          },
+          {
+            "base": "peinar",
+            "with_se": "peinarse",
+            "base_meaning_en": "to comb (someone/something)",
+            "se_meaning_en": "to comb one’s hair"
+          }
+        ]
+      },
+      {
+        "heading": "PRONOMINAL_SEED (mostly lexical / meaning-shifting ‘se’ verbs)",
+        "points": [
+          "The ‘se’ form often behaves like a different lexical verb (meaning shift, nuance change, or the more natural/common form).",
+          "‘se’ is not simply ‘myself/yourself’; it can mark departure, change of state, idiomatic meanings, or other nuances.",
+          "Useful for contrast drills because base vs pronominal forms can differ substantially."
+        ],
+        "examples": [
+          {
+            "base": "ir",
+            "with_se": "irse",
+            "base_meaning_en": "to go",
+            "se_meaning_en": "to leave / go away"
+          },
+          {
+            "base": "dormir",
+            "with_se": "dormirse",
+            "base_meaning_en": "to sleep",
+            "se_meaning_en": "to fall asleep"
+          },
+          {
+            "base": "poner",
+            "with_se": "ponerse",
+            "base_meaning_en": "to put",
+            "se_meaning_en": "to put on / to become (get)"
+          },
+          {
+            "base": "volver",
+            "with_se": "volverse",
+            "base_meaning_en": "to return",
+            "se_meaning_en": "to become (often permanent change)"
+          },
+          {
+            "base": "perder",
+            "with_se": "perderse",
+            "base_meaning_en": "to lose (something)",
+            "se_meaning_en": "to get lost / to miss (an event)"
+          },
+          {
+            "base": "hacer",
+            "with_se": "hacerse",
+            "base_meaning_en": "to do/make",
+            "se_meaning_en": "to become / make oneself"
+          }
+        ]
+      },
+      {
+        "heading": "Quick diagnostic rule",
+        "rule": "If you can paraphrase the ‘se’ meaning as ‘a sí mismo/a’ (to oneself) without changing meaning much, it’s often reflexive. If not, it’s often pronominal/lexical.",
+        "mini_examples": [
+          {
+            "spanish": "Me lavo.",
+            "paraphrase": "Lavo a mí mismo.",
+            "note": "reflexive (self-directed)"
+          },
+          {
+            "spanish": "Me voy.",
+            "paraphrase": "Voy a mí mismo.",
+            "note": "not equivalent → pronominal (meaning shift: ‘leave’)"
+          },
+          {
+            "spanish": "Se durmió.",
+            "paraphrase": "Durmió a sí mismo.",
+            "note": "not equivalent → pronominal (meaning shift: ‘fall asleep’)"
+          }
+        ]
+      },
+      {
+        "heading": "Important nuance",
+        "points": [
+          "Some verbs can be reflexive in one context and pronominal/lexical in another; classification is a learning aid, not a perfect linguistic taxonomy.",
+          "Many verbs allow both transitive and reflexive/intransitive uses (e.g., sentar vs sentarse)."
+        ],
+        "examples": [
+          {
+            "spanish": "Siento al niño.",
+            "en": "I sit the child down.",
+            "type": "transitive base"
+          },
+          {
+            "spanish": "Me siento.",
+            "en": "I sit down.",
+            "type": "reflexive/intransitive"
+          }
+        ]
+      }
+    ]
   },
   "templates": {
     "REFLEXIVE_PLACEMENT_CORE": {
@@ -334,6 +439,7 @@
         "**Global Constraints:**",
         "1. **Highlighting:** Highlight the target VERB in **ALL CAPS**.",
         "2. **Clarity:** Ensure the English translation clearly reflects the specific meaning difference.",
+        "3. **Double-SE Guard:** If the provided {pronominal_infinitive} already ends in 'se', treat {infinitive} as the base. Do NOT generate forms with double-se (e.g. 'hacersese').",
         "",
         "**Task:** PRONOMINAL_CONTRAST_PAIR",
         "**Base Verb:** {infinitive}",
@@ -466,120 +572,5 @@
         "Provide 5 fill-in-the-blank exercises focusing on correct conjugation choice."
       ]
     }
-  },
-  "reference_guide": {
-    "title": "REFLEXIVE_SEED vs PRONOMINAL_SEED",
-    "summary": "Both lists contain verbs commonly used with 'se', but for different reasons: reflexive (self-directed actions) vs pronominal/lexical (meaning-shifting or fixed 'se' usage).",
-    "sections": [
-      {
-        "heading": "REFLEXIVE_SEED (mostly literal reflexive / routine actions)",
-        "points": [
-          "‘se’ usually means the subject performs the action on themselves (self-directed object).",
-          "Meaning stays close to the base verb; the difference is mainly ‘to oneself’.",
-          "Often used for daily routines (wake up, shower, dress, etc.).",
-          "The base verb can usually still be used transitively with an object."
-        ],
-        "examples": [
-          {
-            "base": "lavar",
-            "with_se": "lavarse",
-            "base_meaning_en": "to wash (something)",
-            "se_meaning_en": "to wash oneself"
-          },
-          {
-            "base": "peinar",
-            "with_se": "peinarse",
-            "base_meaning_en": "to comb (someone/something)",
-            "se_meaning_en": "to comb one’s hair"
-          }
-        ]
-      },
-      {
-        "heading": "PRONOMINAL_SEED (mostly lexical / meaning-shifting ‘se’ verbs)",
-        "points": [
-          "The ‘se’ form often behaves like a different lexical verb (meaning shift, nuance change, or the more natural/common form).",
-          "‘se’ is not simply ‘myself/yourself’; it can mark departure, change of state, idiomatic meanings, or other nuances.",
-          "Useful for contrast drills because base vs pronominal forms can differ substantially."
-        ],
-        "examples": [
-          {
-            "base": "ir",
-            "with_se": "irse",
-            "base_meaning_en": "to go",
-            "se_meaning_en": "to leave / go away"
-          },
-          {
-            "base": "dormir",
-            "with_se": "dormirse",
-            "base_meaning_en": "to sleep",
-            "se_meaning_en": "to fall asleep"
-          },
-          {
-            "base": "poner",
-            "with_se": "ponerse",
-            "base_meaning_en": "to put",
-            "se_meaning_en": "to put on / to become (get)"
-          },
-          {
-            "base": "volver",
-            "with_se": "volverse",
-            "base_meaning_en": "to return",
-            "se_meaning_en": "to become (often permanent change)"
-          },
-          {
-            "base": "perder",
-            "with_se": "perderse",
-            "base_meaning_en": "to lose (something)",
-            "se_meaning_en": "to get lost / to miss (an event)"
-          },
-          {
-            "base": "hacer",
-            "with_se": "hacerse",
-            "base_meaning_en": "to do/make",
-            "se_meaning_en": "to become / make oneself"
-          }
-        ]
-      },
-      {
-        "heading": "Quick diagnostic rule",
-        "rule": "If you can paraphrase the ‘se’ meaning as ‘a sí mismo/a’ (to oneself) without changing meaning much, it’s often reflexive. If not, it’s often pronominal/lexical.",
-        "mini_examples": [
-          {
-            "spanish": "Me lavo.",
-            "paraphrase": "Lavo a mí mismo.",
-            "note": "reflexive (self-directed)"
-          },
-          {
-            "spanish": "Me voy.",
-            "paraphrase": "Voy a mí mismo.",
-            "note": "not equivalent → pronominal (meaning shift: ‘leave’)"
-          },
-          {
-            "spanish": "Se durmió.",
-            "paraphrase": "Durmió a sí mismo.",
-            "note": "not equivalent → pronominal (meaning shift: ‘fall asleep’)"
-          }
-        ]
-      },
-      {
-        "heading": "Important nuance",
-        "points": [
-          "Some verbs can be reflexive in one context and pronominal/lexical in another; classification is a learning aid, not a perfect linguistic taxonomy.",
-          "Many verbs allow both transitive and reflexive/intransitive uses (e.g., sentar vs sentarse)."
-        ],
-        "examples": [
-          {
-            "spanish": "Siento al niño.",
-            "en": "I sit the child down.",
-            "type": "transitive base"
-          },
-          {
-            "spanish": "Me siento.",
-            "en": "I sit down.",
-            "type": "reflexive/intransitive"
-          }
-        ]
-      }
-    ]
   }
 }
