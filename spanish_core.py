@@ -1,6 +1,6 @@
-# spanish_core.py (v11.0)
+# spanish_core.py (v12.0)
 # Core: Jehle DB + Pronominal JSON + Prompts + Se Classification
-# Updated: Added get_taxonomy_map() for granular Grid View grouping
+# Updated: render_prompt() now detects if input is already reflexive to avoid 'hacersese'
 
 from __future__ import annotations
 
@@ -30,17 +30,10 @@ def load_se_catalog(path: str = VERBS_CAT_JSON) -> dict:
 
 @st.cache_data(show_spinner=False)
 def get_taxonomy_map(json_path: str = VERBS_CAT_JSON) -> Dict[str, Dict[str, str]]:
-    """
-    Builds a reverse map for the grid view:
-    verb_string -> { 'root': 'Reflexive', 'sub': 'Daily Routine' }
-    
-    Maps BOTH base ('lavar') and pronominal ('lavarse') forms to ensure matching.
-    """
     data = load_se_catalog(json_path)
     taxonomy = data.get("verb_taxonomy", {})
     mapping = {}
 
-    # Define nice display names for roots
     root_names = {
         "reflexive": "🪞 Reflexive (Self-directed)",
         "pronominal": "🔄 Pronominal (Meaning Shift)",
@@ -48,34 +41,21 @@ def get_taxonomy_map(json_path: str = VERBS_CAT_JSON) -> Dict[str, Dict[str, str
         "experiencer": "🧠 Experiencer (Gustar-like)"
     }
 
-    # Iterate through the hierarchy
     for root_key, root_data in taxonomy.items():
         root_label = root_names.get(root_key, root_key.title())
         categories = root_data.get("categories", {})
         
         for sub_key, sub_data in categories.items():
-            # Format sub-category key: "daily_routine" -> "Daily Routine"
             sub_label = sub_key.replace("_", " ").title()
-            
-            # The 'verbs' object can be complex, so we parse carefully
             verbs_dict = sub_data.get("verbs", {})
             for base, val in verbs_dict.items():
-                
-                # 1. Determine Pronominal Form
                 if isinstance(val, dict):
-                    pron = val.get("form", "")
-                    # Special check: Experiencer verbs might have 'related_pronominal'
-                    if not pron:
-                        # Fallback for complex experiencer objects like {form: 'aburrir', related...}
-                        pron = val.get("related_pronominal", "")
+                    pron = val.get("form", "") or val.get("related_pronominal", "")
                 else:
                     pron = val
                 
-                # 2. Map Base form
                 if base:
                     mapping[base.lower()] = {"root": root_label, "sub": sub_label}
-                
-                # 3. Map Pronominal form (if exists)
                 if pron:
                     mapping[pron.lower()] = {"root": root_label, "sub": sub_label}
                     
@@ -83,10 +63,6 @@ def get_taxonomy_map(json_path: str = VERBS_CAT_JSON) -> Dict[str, Dict[str, str
 
 @st.cache_data(show_spinner=False)
 def load_verb_seeds(json_path: str = VERBS_CAT_JSON) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], List[str]]:
-    """
-    Parses categorized JSON for Drill Logic (Templates).
-    Returns flat dicts: {base: pronominal_form}
-    """
     data = load_se_catalog(json_path)
     taxonomy = data.get("verb_taxonomy", {})
     
@@ -233,7 +209,6 @@ def get_verb_record(verbs: List[dict], lookup: Dict[str, int], infinitive: str) 
 def merge_usage(verb: dict, overrides: Dict[str, dict]) -> dict:
     base = (verb.get("infinitive") or "").lower()
     o = overrides.get(base, {})
-    
     ref_seed, pron_seed, acc_seed, exp_seed_list = load_verb_seeds(VERBS_CAT_JSON)
     se_catalog = load_se_catalog(VERBS_CAT_JSON)
     
@@ -287,13 +262,34 @@ def render_prompt(template_id: str, verb: dict) -> str:
         return ""
     usage = verb.get("usage", {}) or {}
     
-    infinitive = verb.get("infinitive", "VERB")
-    pronominal = usage.get("pronominal_infinitive") or f"{infinitive}se"
+    raw_infinitive = verb.get("infinitive", "VERB")
+    usage_pron = usage.get("pronominal_infinitive")
+    
+    # ----------------------------------------------------
+    # SMART LOGIC: Handle "hacerse" -> "hacer" vs "hacerse"
+    # ----------------------------------------------------
+    if usage_pron:
+        pronominal = usage_pron
+        # If user selected 'hacerse' (so infinitive='hacerse') and DB agrees...
+        if raw_infinitive == pronominal and raw_infinitive.endswith("se"):
+            # Strip 'se' to get true base for the prompt
+            base_infinitive = raw_infinitive[:-2]
+        else:
+            base_infinitive = raw_infinitive
+    else:
+        # No usage data, but verb ends in 'se'?
+        if raw_infinitive.endswith("se"):
+            pronominal = raw_infinitive
+            base_infinitive = raw_infinitive[:-2]
+        else:
+            base_infinitive = raw_infinitive
+            pronominal = f"{raw_infinitive}se"
+            
     shift = usage.get("meaning_shift") or "Standard usage"
 
     return t["prompt"].format(
-        infinitive=infinitive,
-        pronominal_infinitive=pronominal,
+        infinitive=base_infinitive, # Passes 'hacer' even if 'hacerse' was clicked
+        pronominal_infinitive=pronominal, # Passes 'hacerse'
         meaning_shift=shift,
     )
 
