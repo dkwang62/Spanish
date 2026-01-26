@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
-
+from datetime import datetime
 import streamlit as st
 
 VERBS_CAT_JSON = "verbs_categorized.json"
@@ -323,3 +323,107 @@ def sorted_infinitives(verbs: List[dict], rank_map: Dict[str, int]) -> List[str]
     infinitives = [v.get("infinitive") for v in verbs if v.get("infinitive")]
     infinitives.sort(key=lambda inf: (rank_map.get(inf.lower(), 10_000_000), inf))
     return infinitives
+
+# ==========================================
+# BROWSER-BASED USER DATA (for Streamlit Cloud)
+# ==========================================
+
+def get_default_user_data() -> dict:
+    """Return default user data structure"""
+    return {
+        "version": 1,
+        "ratings": {},
+        "history": [],
+        "favourites": [],
+        "notes": {},
+        "last_updated": None
+    }
+
+
+def init_user_data_in_session() -> dict:
+    """
+    Initialize user data in session state.
+    For Streamlit Cloud: data lives only in session state (browser session)
+    """
+    if "user_data" not in st.session_state:
+        st.session_state["user_data"] = get_default_user_data()
+    return st.session_state["user_data"]
+
+
+def toggle_favourite(infinitive: str) -> dict:
+    """
+    Add or remove a verb from favourites in session state.
+    Returns updated user_data dict.
+    """
+    user_data = st.session_state.get("user_data", get_default_user_data())
+    favourites = user_data.get("favourites", [])
+    
+    if infinitive in favourites:
+        favourites.remove(infinitive)
+    else:
+        favourites.append(infinitive)
+    
+    user_data["favourites"] = favourites
+    user_data["last_updated"] = datetime.now().isoformat()
+    st.session_state["user_data"] = user_data
+    return user_data
+
+
+def is_favourite(infinitive: str) -> bool:
+    """Check if a verb is in favourites"""
+    user_data = st.session_state.get("user_data", {})
+    return infinitive in user_data.get("favourites", [])
+
+
+def export_user_data_json() -> str:
+    """Export user data as JSON string for download"""
+    user_data = st.session_state.get("user_data", get_default_user_data())
+    user_data["last_updated"] = datetime.now().isoformat()
+    return json.dumps(user_data, ensure_ascii=False, indent=2)
+
+
+def import_user_data_from_json(json_str: str) -> bool:
+    """
+    Import user data from JSON string.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        data = json.loads(json_str)
+        
+        # Validate structure
+        if not isinstance(data, dict):
+            return False
+        
+        # Ensure required keys exist
+        required_keys = ["favourites", "ratings", "history", "notes"]
+        for key in required_keys:
+            if key not in data:
+                data[key] = [] if key in ["favourites", "history"] else {}
+        
+        data["version"] = data.get("version", 1)
+        data["last_updated"] = datetime.now().isoformat()
+        
+        st.session_state["user_data"] = data
+        return True
+        
+    except json.JSONDecodeError:
+        return False
+    except Exception:
+        return False
+
+
+def merge_favourites(new_favourites: list) -> dict:
+    """
+    Merge new favourites with existing ones (no duplicates).
+    Useful for importing favourites from GitHub without losing session data.
+    """
+    user_data = st.session_state.get("user_data", get_default_user_data())
+    current_favs = set(user_data.get("favourites", []))
+    
+    for fav in new_favourites:
+        current_favs.add(fav)
+    
+    user_data["favourites"] = sorted(list(current_favs))
+    user_data["last_updated"] = datetime.now().isoformat()
+    st.session_state["user_data"] = user_data
+    return user_data
