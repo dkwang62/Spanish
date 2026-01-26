@@ -1,5 +1,5 @@
-# spanish_state.py (v5.1)
-# Minimal state for grid -> detail UX + Toast feedback
+# spanish_state.py (v7.0 - Streamlit Cloud Compatible)
+# Session-only state (no file I/O)
 
 from __future__ import annotations
 import streamlit as st
@@ -8,9 +8,13 @@ PAGE_CONFIG = {"layout": "wide", "page_title": "Spanish Verb Lab", "page_icon": 
 
 
 def ensure_state() -> None:
+    """Initialize session state (browser session only)"""
     st.session_state.setdefault("mode", "grid")   # grid | detail
-    st.session_state.setdefault("preview", None) # currently previewed infinitive
+    st.session_state.setdefault("preview", None)  # currently previewed infinitive
     st.session_state.setdefault("selected", None) # currently opened infinitive (detail)
+    
+    # User data is initialized in spanish_core.init_user_data_in_session()
+    # Called from app.py to avoid circular imports
 
 
 def click_tile(infinitive: str) -> None:
