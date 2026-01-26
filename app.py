@@ -1,18 +1,20 @@
-# app.py (v11.2)
-# Updates:
-# 1. Guide Tab now reads content from 'verbs_categorized.json' (key: "reference_guide").
-# 2. Removed logic that looked for "help.json".
+# app.py (v13.0 - Streamlit Cloud Compatible)
+# Browser-based storage with JSON download/upload for persistence
 
 import streamlit as st
 import json
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
 
 from spanish_core import (
     load_jehle_db, load_overrides, save_overrides,
     load_frequency_map, sorted_infinitives, search_verbs,
     get_verb_record, merge_usage, load_templates, render_prompt,
-    get_taxonomy_map
+    get_taxonomy_map,
+    # Browser storage functions
+    init_user_data_in_session, toggle_favourite, is_favourite,
+    export_user_data_json, import_user_data_from_json, merge_favourites
 )
 from spanish_state import PAGE_CONFIG, ensure_state, click_tile, back_to_grid
 from spanish_ui import apply_styles, build_verb_card_html
@@ -32,6 +34,9 @@ rank_map = load_frequency_map(FREQ_JSON)
 overrides = load_overrides(OVERRIDES_JSON)
 templates_map = load_templates(VERBS_CAT_JSON)
 
+# Initialize user data in session (browser-based)
+user_data = init_user_data_in_session()
+
 # --- Helper to load Guide from the Main JSON ---
 @st.cache_data
 def load_guide_content(path: str):
@@ -40,7 +45,7 @@ def load_guide_content(path: str):
         return None
     with open(p, "r", encoding="utf-8") as f:
         data = json.load(f)
-        return data.get("reference_guide") # Load specific key
+        return data.get("reference_guide")
 
 guide_content = load_guide_content(VERBS_CAT_JSON)
 
@@ -52,14 +57,14 @@ selected_inf = st.session_state.get("selected")
 st.title("Spanish Verb Lab")
 
 # ==========================================
-# 🛑 SIDEBAR: NAVIGATION & CONTROLS
+# 🛠️ SIDEBAR: NAVIGATION & CONTROLS
 # ==========================================
 with st.sidebar:
     st.header("Navigation")
     if mode == "grid":
-        st.markdown("📍 **Home / Grid**")
+        st.markdown("🏠 **Home / Grid**")
     else:
-        st.markdown(f"📍 Home › **{selected_inf}**")
+        st.markdown(f"🏠 Home › **{selected_inf}**")
 
     if mode == "grid":
         if preview_inf:
@@ -75,6 +80,78 @@ with st.sidebar:
             back_to_grid()
             st.rerun()
 
+    st.divider()
+
+    # ⭐ FAVOURITES MANAGEMENT SECTION
+    st.subheader("⭐ My Favourites")
+    fav_count = len(user_data.get("favourites", []))
+    
+    if fav_count > 0:
+        st.caption(f"{fav_count} favourite{'s' if fav_count != 1 else ''} saved")
+        
+        # Download button
+        json_data = export_user_data_json()
+        st.download_button(
+            label="📥 Download Favourites",
+            data=json_data,
+            file_name=f"spanish_verb_favourites_{datetime.now().strftime('%Y%m%d')}.json",
+            mime="application/json",
+            use_container_width=True,
+            help="Download your favourites as JSON to save permanently"
+        )
+        
+        # Clear all favourites
+        if st.button("🗑️ Clear All Favourites", use_container_width=True, type="secondary"):
+            if st.session_state.get("confirm_clear"):
+                user_data["favourites"] = []
+                st.session_state["user_data"] = user_data
+                st.session_state["confirm_clear"] = False
+                st.toast("All favourites cleared!", icon="🗑️")
+                st.rerun()
+            else:
+                st.session_state["confirm_clear"] = True
+                st.warning("⚠️ Click again to confirm")
+                st.rerun()
+    else:
+        st.caption("No favourites yet")
+    
+    # Upload favourites
+    with st.expander("📤 Upload Favourites", expanded=False):
+        st.caption("Upload a previously downloaded JSON file")
+        uploaded_file = st.file_uploader(
+            "Choose JSON file",
+            type=["json"],
+            label_visibility="collapsed",
+            key="favourites_upload"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                json_str = uploaded_file.read().decode("utf-8")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Replace", use_container_width=True, help="Replace all current favourites"):
+                        if import_user_data_from_json(json_str):
+                            st.success("✅ Favourites imported!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid JSON file")
+                
+                with col2:
+                    if st.button("Merge", use_container_width=True, help="Add to existing favourites"):
+                        try:
+                            data = json.loads(json_str)
+                            new_favs = data.get("favourites", [])
+                            merge_favourites(new_favs)
+                            st.success("✅ Favourites merged!")
+                            st.rerun()
+                        except:
+                            st.error("❌ Invalid JSON file")
+                            
+            except Exception as e:
+                st.error(f"Error reading file: {e}")
+    
     st.divider()
 
     st.subheader("Search")
@@ -113,6 +190,17 @@ with st.sidebar:
                 v = merge_usage(v, overrides)
                 rank = rank_map.get(preview_inf.lower())
                 st.markdown(build_verb_card_html(v, rating=None, freq_rank=rank), unsafe_allow_html=True)
+                
+                # ⭐ FAVOURITE TOGGLE IN PREVIEW
+                is_fav = is_favourite(preview_inf)
+                fav_label = "⭐ Remove from Favourites" if is_fav else "☆ Add to Favourites"
+                fav_help = "Click to remove this verb from your favourites" if is_fav else "Click to add this verb to your favourites"
+                
+                if st.button(fav_label, use_container_width=True, help=fav_help):
+                    toggle_favourite(preview_inf)
+                    action = "removed from" if is_fav else "added to"
+                    st.toast(f"**{preview_inf}** {action} favourites!", icon="⭐" if not is_fav else "☆")
+                    st.rerun()
         else:
             st.caption("Click a tile to preview.")
         st.divider()
@@ -123,15 +211,15 @@ with st.sidebar:
 
 
 # ==========================================
-# 🛑 MAIN AREA
+# 🛠️ MAIN AREA
 # ==========================================
 
 if mode == "grid":
-    st.info("👆 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** (or the sidebar button) to open details.", icon="ℹ️")
+    st.info("💡 **Tip:** Click a tile to **preview** in the sidebar. Click the **same tile again** (or the sidebar button) to open details.", icon="ℹ️")
 
     sort_option = st.radio(
         "Sort Order",
-        options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity"], 
+        options=["Alphabetical", "ar/er/ir/se", "By Category", "Popularity", "⭐ Favourites"], 
         index=0, 
         horizontal=True,
         label_visibility="collapsed"
@@ -156,12 +244,16 @@ if mode == "grid":
     base_list = build_list()
 
     def render_tiles(infs: list[str], per_row: int = 6, max_items: int = 240):
+        """Render verb tiles with ⭐ indicator for favourites"""
         infs = infs[:max_items]
         for i in range(0, len(infs), per_row):
             row = infs[i:i+per_row]
             cols = st.columns(per_row)
             for j, inf in enumerate(row):
-                label = f"{inf}"
+                # Add ⭐ to favourites
+                is_fav = is_favourite(inf)
+                label = f"⭐ {inf}" if is_fav else inf
+                
                 is_preview = (st.session_state.get("preview") == inf)
                 btn_type = "primary" if is_preview else "secondary"
                 cols[j].button(
@@ -173,7 +265,33 @@ if mode == "grid":
                     args=(inf,),
                 )
 
-    if sort_option == "ar/er/ir/se":
+    # ⭐ FAVOURITES VIEW
+    if sort_option == "⭐ Favourites":
+        favourites = user_data.get("favourites", [])
+        if favourites:
+            # Filter to only favourites that exist in current search/base list
+            fav_verbs = [inf for inf in favourites if inf in base_list]
+            
+            if fav_verbs:
+                st.subheader(f"⭐ Your Favourites ({len(fav_verbs)} verb{'s' if len(fav_verbs) != 1 else ''})")
+                
+                # Show tip with download reminder
+                st.info("💡 **Tip:** Download your favourites using the sidebar button to save them permanently!", icon="💾")
+                
+                render_tiles(fav_verbs, max_items=600)
+                
+                # Show removed favourites if search is active
+                if st.session_state.get("search_query", "").strip():
+                    removed = [inf for inf in favourites if inf not in base_list]
+                    if removed:
+                        with st.expander(f"🔍 {len(removed)} favourite{'s' if len(removed) != 1 else ''} hidden by search"):
+                            st.caption(", ".join(removed))
+            else:
+                st.warning("Your favourites are not in the current search results. Clear your search to see all favourites.")
+        else:
+            st.info("⭐ **You haven't added any favourites yet!**\n\n**To add favourites:**\n1. Click a verb tile to preview it\n2. Click the '☆ Add to Favourites' button in the sidebar\n\n**To save permanently:**\n- Use the '📥 Download Favourites' button in the sidebar\n- Save the JSON file to your computer or GitHub\n- Upload it later using '📤 Upload Favourites'", icon="💡")
+
+    elif sort_option == "ar/er/ir/se":
         ar = sorted([inf for inf in base_list if inf.lower().endswith("ar")], key=lambda x: x.lower())
         er = sorted([inf for inf in base_list if inf.lower().endswith("er")], key=lambda x: x.lower())
         ir = sorted([inf for inf in base_list if inf.lower().endswith(("ir", "ír"))], key=lambda x: x.lower())
@@ -233,6 +351,7 @@ if mode == "grid":
             render_tiles(standard)
 
     else:
+        # Alphabetical or Popularity
         render_tiles(base_list, max_items=600)
 
 else:
@@ -248,7 +367,21 @@ else:
 
     v = merge_usage(v, overrides)
     
-    # Added 3rd tab "📘 Guide"
+    # ⭐ HEADER WITH FAVOURITE TOGGLE
+    col1, col2 = st.columns([0.88, 0.12])
+    with col1:
+        st.markdown(f"## 🔹 Verb: **{selected_inf.upper()}**")
+    with col2:
+        is_fav = is_favourite(selected_inf)
+        fav_icon = "⭐" if is_fav else "☆"
+        fav_help = "Remove from favourites" if is_fav else "Add to favourites"
+        
+        if st.button(fav_icon, help=fav_help, use_container_width=True, type="primary" if is_fav else "secondary"):
+            toggle_favourite(selected_inf)
+            action = "removed from" if is_fav else "added to"
+            st.toast(f"**{selected_inf}** {action} favourites!", icon=fav_icon)
+            st.rerun()
+    
     tabs = st.tabs(["Conjugations", "Prompt generator", "📘 Guide"])
     
     with tabs[0]:
@@ -270,31 +403,24 @@ else:
             st.header(guide_content.get("title", "Guide"))
             st.info(guide_content.get("summary", ""))
             
-            # Render Sections
             for section in guide_content.get("sections", []):
                 with st.expander(section.get("heading", "Section"), expanded=False):
                     
-                    # Points
                     for point in section.get("points", []):
                         st.markdown(f"- {point}")
                     
-                    # Rule (if present)
                     if "rule" in section:
                         st.markdown(f"**Rule:** {section['rule']}")
 
-                    # Examples
                     examples = section.get("examples") or section.get("mini_examples")
                     if examples:
                         st.markdown("---")
                         st.markdown("**Examples:**")
                         for ex in examples:
-                            # Format 1: Base vs Se
                             if "base" in ex:
                                 st.markdown(f"- **{ex['base']}** → **{ex['with_se']}**: {ex.get('se_meaning_en', '')}")
-                            # Format 2: Spanish vs Paraphrase
                             elif "paraphrase" in ex:
                                 st.markdown(f"- *{ex['spanish']}* → {ex['paraphrase']} ({ex.get('note', '')})")
-                            # Format 3: Generic
                             elif "spanish" in ex:
                                 st.markdown(f"- {ex['spanish']} ({ex.get('en', '')})")
         else:
